@@ -38,18 +38,10 @@
   .now-item.now-status.allidle { background: #16a34a; color: #fff; }
   .now-item.now-status.weekend { background: #16a34a; color: #fff; }
   /* Status stickers: shown per current billing status */
-  .status-sticker {
-    display: none;
-    height: 72px;
-    border-radius: 10px;
-  }
-  #peak-sticker {
-    box-shadow: 0 3px 10px rgba(185, 28, 28, 0.25);
-    border: 2px solid #fecaca;
-  }
-  /* Idle sticker sits in the reserved right-hand blank zone (container-relative),
+  /* Both stickers share the same reserved right-hand blank zone (container-relative),
      centered vertically on the gap centerline between now-strip and legend-strip.
      Height and vertical offset are set dynamically by JS. */
+  #peak-sticker,
   #idle-sticker {
     display: none;
     position: absolute;
@@ -57,10 +49,16 @@
     top: 0;
     z-index: 6;
     border-radius: 10px;
+  }
+  #peak-sticker {
+    box-shadow: 0 3px 10px rgba(185, 28, 28, 0.25);
+    border: 2px solid #fecaca;
+  }
+  #idle-sticker {
     box-shadow: 0 3px 10px rgba(21, 128, 61, 0.25);
     border: 2px solid #bbf7d0;
   }
-  .now-strip.peak-on #peak-sticker { display: block; }
+  .now-strip.peak-on ~ .legend-strip #peak-sticker,
   .now-strip.idle-on ~ .legend-strip #idle-sticker { display: block; }
 
   /* Reserve blank space on the right so the sticker never overlaps the strips */
@@ -295,7 +293,6 @@
     <div class="now-item now-date" id="now-date">📅 日期：获取中…</div>
     <div class="now-item now-time" id="now-time">🕐 时间：--:--:--</div>
     <div class="now-item now-status" id="now-status">⏱ 状态：获取中…</div>
-    <img id="peak-sticker" class="status-sticker" src="peak-sticker.png" alt="高峰时段表情包">
   </div>
 
   <div class="legend-strip">
@@ -303,6 +300,7 @@
     <div class="legend-item"><div class="legend-swatch sw-peak"></div><span>高峰 09:00-12:00·14:00-18:00</span></div>
     <div class="legend-item"><div class="legend-swatch sw-idle"></div><span>空闲时段</span></div>
     <div class="legend-item"><div class="legend-swatch sw-allidle"></div><span>周末全天低谷</span></div>
+    <img id="peak-sticker" src="peak-sticker.png" alt="高峰时段表情包">
     <img id="idle-sticker" src="idle-sticker.png" alt="空闲时段表情包">
   </div>
 
@@ -504,19 +502,21 @@
     var strip = document.getElementById('now-strip');
     strip.classList.toggle('peak-on', st.key === 'peak');
     strip.classList.toggle('idle-on', st.key === 'idle');
-    /* 空闲表情：位于右侧预留空白区，高度 = 两区块高度之和，
-       垂直中心对齐两区块缝隙的中心线（相对 container 定位） */
-    if (st.key === 'idle') {
+    /* 两个表情位置完全一致：均位于右侧预留空白区，高度 = 两区块高度之和，
+       垂直中心对齐两区块缝隙的中心线（相对 container 定位）。
+       每次 tick 同时设置两者，切换时位置绝对一致。 */
+    if (st.key === 'peak' || st.key === 'idle') {
       var legendEl = document.querySelector('.legend-strip');
-      var idleImg = document.getElementById('idle-sticker');
-      if (legendEl && idleImg) {
-        var h = strip.offsetHeight + legendEl.offsetHeight;
-        idleImg.style.height = h + 'px';
-        /* 缝隙中线相对 container 顶部的距离 = (now顶 + legend底)/2 - container顶 */
-        var cTop = document.querySelector('.container').getBoundingClientRect().top;
-        var midY = (strip.getBoundingClientRect().top + legendEl.getBoundingClientRect().bottom) / 2 - cTop;
-        idleImg.style.top = (midY - h / 2) + 'px';
-      }
+      var cTop = document.querySelector('.container').getBoundingClientRect().top;
+      var midY = (strip.getBoundingClientRect().top + legendEl.getBoundingClientRect().bottom) / 2 - cTop;
+      var h = strip.offsetHeight + legendEl.offsetHeight;
+      ['peak-sticker', 'idle-sticker'].forEach(function (id) {
+        var img = document.getElementById(id);
+        if (img) {
+          img.style.height = h + 'px';
+          img.style.top = (midY - h / 2) + 'px';
+        }
+      });
     }
 
     /* 跨月自动重渲染 */
