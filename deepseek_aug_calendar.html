@@ -53,13 +53,13 @@
     box-shadow: 0 3px 10px rgba(185, 28, 28, 0.25);
     border: 2px solid #fecaca;
   }
-  /* Idle sticker rides on the gap between now-strip and legend-strip */
+  /* Idle sticker overlaps the bottom of now-strip and the top of legend-strip */
   #idle-sticker {
     display: none;
     position: absolute;
     left: 50%;
     bottom: 100%;
-    transform: translateX(-50%) translateY(55%);
+    transform: translate(-50%, 50%);
     z-index: 6;
     height: 72px;
     border-radius: 10px;
@@ -74,6 +74,7 @@
     background: #fff; border-radius: 14px; padding: 14px 20px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.06); margin-bottom: 16px;
     display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
+    position: relative; /* positioning context for the idle sticker */
   }
   .legend-strip-title { font-size: 13px; font-weight: 700; color: #4b5563; margin-right: 6px; }
   .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #4b5563; }
