@@ -53,7 +53,8 @@
     box-shadow: 0 3px 10px rgba(185, 28, 28, 0.25);
     border: 2px solid #fecaca;
   }
-  /* Idle sticker overlaps the bottom of now-strip and the top of legend-strip, anchored right */
+  /* Idle sticker overlaps the bottom of now-strip and the top of legend-strip, anchored right.
+     Height is set dynamically by JS = now-strip height + legend-strip height */
   #idle-sticker {
     display: none;
     position: absolute;
@@ -61,7 +62,6 @@
     bottom: 100%;
     transform: translateY(50%);
     z-index: 6;
-    height: 72px;
     border-radius: 10px;
     box-shadow: 0 3px 10px rgba(21, 128, 61, 0.25);
     border: 2px solid #bbf7d0;
@@ -515,6 +515,14 @@
     var strip = document.getElementById('now-strip');
     strip.classList.toggle('peak-on', st.key === 'peak');
     strip.classList.toggle('idle-on', st.key === 'idle');
+    /* 空闲表情高度 = now-strip 高度 + legend-strip 高度（随窗口/换行自适应） */
+    if (st.key === 'idle') {
+      var legendEl = document.querySelector('.legend-strip');
+      var idleImg = document.getElementById('idle-sticker');
+      if (legendEl && idleImg) {
+        idleImg.style.height = (strip.offsetHeight + legendEl.offsetHeight) + 'px';
+      }
+    }
 
     /* 跨月自动重渲染 */
     if (f.year !== rendered.year || f.month !== rendered.month) {
