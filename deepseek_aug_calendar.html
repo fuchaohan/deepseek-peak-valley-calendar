@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepSeek 8月峰谷日历 · 2026</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #f0f4ff 0%, #fef6f0 100%);
+    min-height: 100vh;
+    padding: 24px 16px;
+    color: #1f2937;
+  }
+  .container { max-width: 1180px; margin: 0 auto; }
+
+  .header {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
+    border-radius: 16px; padding: 28px 32px; color: #fff;
+    box-shadow: 0 10px 30px rgba(79, 70, 229, 0.3); margin-bottom: 24px;
+  }
+  .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+  .header .subtitle { font-size: 14px; opacity: 0.92; }
+  .badge-row { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .badge {
+    background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35);
+    padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    backdrop-filter: blur(8px);
+  }
+
+  /* Now status strip */
+  .now-strip {
+    background: #fff; border-radius: 14px; padding: 14px 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06); margin-bottom: 16px;
+    display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
+  }
+  .now-item {
+    font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 10px;
+    background: #f3f4f6; color: #111827; font-variant-numeric: tabular-nums;
+  }
+  .now-item.now-status.peak { background: #fecaca; color: #b91c1c; }
+  .now-item.now-status.idle { background: #bbf7d0; color: #15803d; }
+  .now-item.now-status.allidle { background: #16a34a; color: #fff; }
+  .now-item.now-status.weekend { background: #16a34a; color: #fff; }
+
+  /* Legend */
+  .legend-strip {
+    background: #fff; border-radius: 14px; padding: 14px 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06); margin-bottom: 16px;
+    display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
+  }
+  .legend-strip-title { font-size: 13px; font-weight: 700; color: #4b5563; margin-right: 6px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #4b5563; }
+  .legend-swatch {
+    width: 22px; height: 14px; border-radius: 3px; border: 1px solid;
+  }
+  .sw-peak { background: linear-gradient(180deg, #ef4444, #f87171); border-color: #dc2626; }
+  .sw-idle { background: linear-gradient(180deg, #6ee7b7, #10b981); border-color: #059669; }
+  .sw-allidle { background: linear-gradient(180deg, #16a34a, #22c55e); border-color: #15803d; }
+
+  /* Stats */
+  .stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px; margin-bottom: 24px;
+  }
+  .stat-card {
+    background: #fff; border-radius: 12px; padding: 16px 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 4px solid #d1d5db;
+  }
+  .stat-card.workday { border-left-color: #ef4444; }
+  .stat-card.new-weekend,
+  .stat-card.old-weekend { border-left-color: #10b981; }
+  .stat-card .label { font-size: 11px; color: #6b7280; margin-bottom: 6px; }
+  .stat-card .value { font-size: 20px; font-weight: 700; }
+  .stat-card.workday .value { color: #ef4444; }
+  .stat-card.new-weekend .value,
+  .stat-card.old-weekend .value { color: #10b981; }
+  .stat-card .desc { font-size: 10px; color: #9ca3af; margin-top: 4px; line-height: 1.4; }
+
+  /* Calendar wrap */
+  .calendar-wrap {
+    background: #fff; border-radius: 14px; padding: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06); margin-bottom: 20px;
+    overflow-x: auto;
+  }
+  .calendar-title { font-size: 18px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+  .calendar-subtitle { font-size: 12px; color: #6b7280; margin-bottom: 18px; }
+
+  /* Grid: header row + 6 week rows; each row = 1 time-block + 7 day cells */
+  .cal-grid {
+    display: grid;
+    grid-template-columns: 84px repeat(7, 1fr);
+    grid-template-rows: 36px repeat(6, auto);
+    gap: 4px;
+    align-items: stretch;
+  }
+
+  .cal-head {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    padding: 8px 0;
+    background: #f9fafb;
+    border-radius: 6px;
+  }
+  .cal-head.weekend { color: #ef4444; }
+  .cal-head.sunday { color: #dc2626; }
+
+  .time-head-label {
+    background: #ffffff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #6b7280;
+    font-weight: 600;
+  }
+
+  /* Row time block: one per row, same structure as day cells
+     (top label + bar area + bottom summary) so the bar area aligns pixel-perfect
+     with the day cells' bar area. The time labels live inside the bar segments. */
+  .row-time-block {
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+    min-height: 150px;
+  }
+  .row-time-block .seg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    line-height: 1;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .row-time-block .seg.idle {
+    background: linear-gradient(90deg, #6ee7b7, #10b981);
+    color: #064e3b;
+    text-shadow: none;
+  }
+  .row-time-block .seg.peak {
+    background: linear-gradient(90deg, #ef4444, #f87171);
+  }
+  .row-time-block .seg.allidle {
+    background: linear-gradient(90deg, #16a34a, #22c55e);
+  }
+  /* no borders between segs: borders would steal 1px each and skew the flex ratio */
+  .row-time-block .seg + .seg { border-top: 0; }
+
+  /* Day cells */
+  .day-cell {
+    background: #fff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 150px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    overflow: hidden;
+  }
+  .day-cell:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.1);
+    z-index: 2;
+  }
+  .day-cell.empty {
+    background: transparent;
+    border: none;
+    cursor: default;
+  }
+  .day-cell.empty:hover { transform: none; box-shadow: none; }
+
+  .day-cell.workday { background: #fff; border-color: #fca5a5; }
+  .day-cell.weekend-new { background: #fff; border-color: #86efac; }
+  .day-cell.weekend-old { background: #fff; border-color: #86efac; border-style: solid; }
+  /* Today highlight: orange 2.5px border + glow */
+  .day-cell.today {
+    border: 2.5px solid #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
+  }
+  /* Real-time "now" line inside the today cell */
+  .day-cell.today { position: relative; }
+  .now-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: #f59e0b;
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.9);
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .cell-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 6px;
+    border-bottom: 1px solid #f3f4f6;
+    background: rgba(255,255,255,0.85);
+  }
+  .cell-num {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .day-cell.workday .cell-num { color: #b91c1c; }
+  .day-cell.weekend-old .cell-num,
+  .day-cell.weekend-new .cell-num { color: #15803d; }
+
+  .cell-tag {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .day-cell.workday .cell-tag { background: #fecaca; color: #991b1b; }
+  .day-cell.weekend-old .cell-tag,
+  .day-cell.weekend-new .cell-tag { background: #16a34a; color: #ffffff; }
+
+  /* Vertical bar inside each day cell (same segment order as row time block) */
+  .cell-bar {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    position: relative;
+  }
+  .cell-bar .vseg { width: 100%; }
+  .cell-bar .vseg.peak { background: linear-gradient(180deg, #ef4444, #f87171); }
+  .cell-bar .vseg.idle { background: linear-gradient(180deg, #6ee7b7, #10b981); }
+  .cell-bar .vseg.allidle { background: linear-gradient(180deg, #16a34a, #22c55e); }
+
+  .cell-summary {
+    font-size: 9px;
+    color: #6b7280;
+    line-height: 1.3;
+    text-align: center;
+    padding: 2px 4px;
+    border-top: 1px solid #f3f4f6;
+    background: rgba(255,255,255,0.85);
+  }
+  .day-cell.workday .cell-summary { color: #dc2626; font-weight: 600; }
+  .day-cell.weekend-old .cell-summary,
+  .day-cell.weekend-new .cell-summary { color: #16a34a; font-weight: 600; }
+
+  /* Notice */
+  .notice {
+    background: #fff; border-radius: 14px; padding: 20px 24px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06); border-left: 4px solid #4f46e5;
+  }
+  .notice-title { font-size: 14px; font-weight: 700; color: #4f46e5; margin-bottom: 10px; }
+  .notice ul { list-style: none; padding: 0; }
+  .notice li {
+    padding: 8px 0; font-size: 13px; color: #374151;
+    border-bottom: 1px solid #f3f4f6; display: flex; gap: 10px; align-items: flex-start;
+  }
+  .notice li:last-child { border-bottom: none; }
+  .notice-dot { color: #4f46e5; font-weight: 700; flex-shrink: 0; }
+  .notice strong { color: #1f2937; }
+
+  footer { text-align: center; color: #9ca3af; font-size: 12px; margin-top: 24px; }
+
+  @media (max-width: 768px) {
+    .header h1 { font-size: 20px; }
+    .cal-grid { grid-template-columns: 66px repeat(7, 1fr); gap: 3px; }
+    .day-cell { min-height: 120px; }
+    .row-time-block { min-height: 120px; }
+    .row-time-block .seg { font-size: 8px; }
+    .cell-num { font-size: 12px; }
+    .cell-summary { font-size: 8px; }
+    .cell-tag { font-size: 8px; padding: 1px 3px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>DeepSeek 8月峰谷日历</h1>
+    <div class="badge-row">
+      <span class="badge">⏱ 高峰 09:00-12:00 · 14:00-18:00</span>
+      <span class="badge">⚡ 新规 2026-08-23 00:00 起</span>
+      <span class="badge" id="today-badge">🕐 今日：获取中…</span>
+    </div>
+  </div>
+
+  <div class="now-strip" id="now-strip">
+    <div class="now-item now-date" id="now-date">📅 日期：获取中…</div>
+    <div class="now-item now-time" id="now-time">🕐 时间：--:--:--</div>
+    <div class="now-item now-status" id="now-status">⏱ 状态：获取中…</div>
+  </div>
+
+  <div class="legend-strip">
+    <span class="legend-strip-title">图例：</span>
+    <div class="legend-item"><div class="legend-swatch sw-peak"></div><span>高峰 09:00-12:00·14:00-18:00</span></div>
+    <div class="legend-item"><div class="legend-swatch sw-idle"></div><span>空闲时段</span></div>
+    <div class="legend-item"><div class="legend-swatch sw-allidle"></div><span>周末全天低谷</span></div>
+  </div>
+
+  <div class="calendar-wrap">
+    <div class="calendar-title">2026 年 8 月 · 日历</div>
+    <div class="calendar-subtitle">每行最左为时段块：写 00:00-09:00 / 09:00-12:00 / 12:00-14:00 / 14:00-18:00 / 18:00-24:00，颜色与右侧日块一致，分段边界对齐。</div>
+
+    <div class="cal-grid">
+
+      <!-- Header row -->
+      <div class="time-head-label">时段</div>
+      <div class="cal-head">周一</div>
+      <div class="cal-head">周二</div>
+      <div class="cal-head">周三</div>
+      <div class="cal-head">周四</div>
+      <div class="cal-head">周五</div>
+      <div class="cal-head weekend">周六</div>
+      <div class="cal-head sunday">周日</div>
+
+      <!-- Week 1: 8/1 (Sat), 8/2 (Sun) -->
+      <div class="row-time-block">
+        <div class="cell-top" style="background:#f9fafb;justify-content:center;"><span class="cell-num" style="color:#6b7280;">时段</span></div>
+        <div class="cell-bar">
+          <div class="seg idle vseg" style="flex: 9 0 0;">00:00-09:00</div>
+          <div class="seg peak vseg" style="flex: 3 0 0;">09:00-12:00</div>
+          <div class="seg idle vseg" style="flex: 2 0 0;">12:00-14:00</div>
+          <div class="seg peak vseg" style="flex: 4 0 0;">14:00-18:00</div>
+          <div class="seg idle vseg" style="flex: 6 0 0;">18:00-24:00</div>
+        </div>
+        <div class="cell-summary">第 1 周</div>
+      </div>
+      <div class="day-cell empty"></div>
+      <div class="day-cell empty"></div>
+      <div class="day-cell empty"></div>
+      <div class="day-cell empty"></div>
+      <div class="day-cell empty"></div>
+      <div class="day-cell weekend-old">
+        <div class="cell-top"><span class="cell-num">1</span><span class="cell-tag">周末</span></div>
+        <div class="cell-bar">
+          <div class="vseg allidle" style="flex: 24 0 0;"></div>
+        </div>
+        <div class="cell-summary">周六 · 全天低谷</div>
+      </div>
+      <div class="day-cell weekend-old">
+        <div class="cell-top"><span class="cell-num">2</span><span class="cell-tag">周末</span></div>
+        <div class="cell-bar">
+          <div class="vseg allidle" style="flex: 24 0 0;"></div>
+        </div>
+        <div class="cell-summary">周日 · 全天低谷</div>
+      </div>
+
+      <!-- Week 2: 8/3-8/9 -->
+      <div class="row-time-block">
+        <div class="cell-top" style="background:#f9fafb;justify-content:center;"><span class="cell-num" style="color:#6b7280;">时段</span></div>
+        <div class="cell-bar">
+          <div class="seg idle vseg" style="flex: 9 0 0;">00:00-09:00</div>
+          <div class="seg peak vseg" style="flex: 3 0 0;">09:00-12:00</div>
+          <div class="seg idle vseg" style="flex: 2 0 0;">12:00-14:00</div>
+          <div class="seg peak vseg" style="flex: 4 0 0;">14:00-18:00</div>
+          <div class="seg idle vseg" style="flex: 6 0 0;">18:00-24:00</div>
+        </div>
+        <div class="cell-summary">第 2 周</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">3</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周一 · 峰谷</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">4</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周二 · 峰谷</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">5</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周三 · 峰谷</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">6</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周四 · 峰谷</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">7</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周五 · 峰谷</div>
+      </div>
+      <div class="day-cell weekend-old">
+        <div class="cell-top"><span class="cell-num">8</span><span class="cell-tag">周末</span></div>
+        <div class="cell-bar">
+          <div class="vseg allidle" style="flex: 24 0 0;"></div>
+        </div>
+        <div class="cell-summary">周六 · 全天低谷</div>
+      </div>
+      <div class="day-cell weekend-old">
+        <div class="cell-top"><span class="cell-num">9</span><span class="cell-tag">周末</span></div>
+        <div class="cell-bar">
+          <div class="vseg allidle" style="flex: 24 0 0;"></div>
+        </div>
+        <div class="cell-summary">周日 · 全天低谷</div>
+      </div>
+
+      <!-- Week 3: 8/10-8/16 -->
+      <div class="row-time-block">
+        <div class="cell-top" style="background:#f9fafb;justify-content:center;"><span class="cell-num" style="color:#6b7280;">时段</span></div>
+        <div class="cell-bar">
+          <div class="seg idle vseg" style="flex: 9 0 0;">00:00-09:00</div>
+          <div class="seg peak vseg" style="flex: 3 0 0;">09:00-12:00</div>
+          <div class="seg idle vseg" style="flex: 2 0 0;">12:00-14:00</div>
+          <div class="seg peak vseg" style="flex: 4 0 0;">14:00-18:00</div>
+          <div class="seg idle vseg" style="flex: 6 0 0;">18:00-24:00</div>
+        </div>
+        <div class="cell-summary">第 3 周</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">10</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周一 · 峰谷</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">11</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周二 · 峰谷</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">12</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周三 · 峰谷</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">13</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周四 · 峰谷</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">14</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周五 · 峰谷</div>
+      </div>
+      <div class="day-cell weekend-old">
+        <div class="cell-top"><span class="cell-num">15</span><span class="cell-tag">周末</span></div>
+        <div class="cell-bar">
+          <div class="vseg allidle" style="flex: 24 0 0;"></div>
+        </div>
+        <div class="cell-summary">周六 · 全天低谷</div>
+      </div>
+      <div class="day-cell weekend-old">
+        <div class="cell-top"><span class="cell-num">16</span><span class="cell-tag">周末</span></div>
+        <div class="cell-bar">
+          <div class="vseg allidle" style="flex: 24 0 0;"></div>
+        </div>
+        <div class="cell-summary">周日 · 全天低谷</div>
+      </div>
+
+      <!-- Week 4: 8/17-8/23 (8/23 first new-rule weekend) -->
+      <div class="row-time-block">
+        <div class="cell-top" style="background:#f9fafb;justify-content:center;"><span class="cell-num" style="color:#6b7280;">时段</span></div>
+        <div class="cell-bar">
+          <div class="seg idle vseg" style="flex: 9 0 0;">00:00-09:00</div>
+          <div class="seg peak vseg" style="flex: 3 0 0;">09:00-12:00</div>
+          <div class="seg idle vseg" style="flex: 2 0 0;">12:00-14:00</div>
+          <div class="seg peak vseg" style="flex: 4 0 0;">14:00-18:00</div>
+          <div class="seg idle vseg" style="flex: 6 0 0;">18:00-24:00</div>
+        </div>
+        <div class="cell-summary">第 4 周</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">17</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周一 · 峰谷</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">18</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周二 · 峰谷</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">19</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周三 · 峰谷</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">20</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周四 · 峰谷</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">21</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周五 · 峰谷</div>
+      </div>
+      <div class="day-cell weekend-old">
+        <div class="cell-top"><span class="cell-num">22</span><span class="cell-tag">周末</span></div>
+        <div class="cell-bar">
+          <div class="vseg allidle" style="flex: 24 0 0;"></div>
+        </div>
+        <div class="cell-summary">周六 · 全天低谷</div>
+      </div>
+      <div class="day-cell weekend-new">
+        <div class="cell-top"><span class="cell-num">23</span><span class="cell-tag">周末</span></div>
+        <div class="cell-bar">
+          <div class="vseg allidle" style="flex: 24 0 0;"></div>
+        </div>
+        <div class="cell-summary">周日 · 全天低谷</div>
+      </div>
+
+      <!-- Week 5: 8/24-8/30 -->
+      <div class="row-time-block">
+        <div class="cell-top" style="background:#f9fafb;justify-content:center;"><span class="cell-num" style="color:#6b7280;">时段</span></div>
+        <div class="cell-bar">
+          <div class="seg idle vseg" style="flex: 9 0 0;">00:00-09:00</div>
+          <div class="seg peak vseg" style="flex: 3 0 0;">09:00-12:00</div>
+          <div class="seg idle vseg" style="flex: 2 0 0;">12:00-14:00</div>
+          <div class="seg peak vseg" style="flex: 4 0 0;">14:00-18:00</div>
+          <div class="seg idle vseg" style="flex: 6 0 0;">18:00-24:00</div>
+        </div>
+        <div class="cell-summary">第 5 周</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">24</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周一 · 峰谷</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">25</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周二 · 峰谷</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">26</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周三 · 峰谷</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">27</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周四 · 峰谷</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">28</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周五 · 峰谷</div>
+      </div>
+      <div class="day-cell weekend-new">
+        <div class="cell-top"><span class="cell-num">29</span><span class="cell-tag">周末</span></div>
+        <div class="cell-bar">
+          <div class="vseg allidle" style="flex: 24 0 0;"></div>
+        </div>
+        <div class="cell-summary">周六 · 全天低谷</div>
+      </div>
+      <div class="day-cell weekend-new">
+        <div class="cell-top"><span class="cell-num">30</span><span class="cell-tag">周末</span></div>
+        <div class="cell-bar">
+          <div class="vseg allidle" style="flex: 24 0 0;"></div>
+        </div>
+        <div class="cell-summary">周日 · 全天低谷</div>
+      </div>
+
+      <!-- Week 6: 8/31 (only Monday) -->
+      <div class="row-time-block">
+        <div class="cell-top" style="background:#f9fafb;justify-content:center;"><span class="cell-num" style="color:#6b7280;">时段</span></div>
+        <div class="cell-bar">
+          <div class="seg idle vseg" style="flex: 9 0 0;">00:00-09:00</div>
+          <div class="seg peak vseg" style="flex: 3 0 0;">09:00-12:00</div>
+          <div class="seg idle vseg" style="flex: 2 0 0;">12:00-14:00</div>
+          <div class="seg peak vseg" style="flex: 4 0 0;">14:00-18:00</div>
+          <div class="seg idle vseg" style="flex: 6 0 0;">18:00-24:00</div>
+        </div>
+        <div class="cell-summary">第 6 周</div>
+      </div>
+      <div class="day-cell workday">
+        <div class="cell-top"><span class="cell-num">31</span><span class="cell-tag">工作日</span></div>
+        <div class="cell-bar">
+          <div class="vseg idle" style="flex: 9 0 0;"></div>
+          <div class="vseg peak" style="flex: 3 0 0;"></div>
+          <div class="vseg idle" style="flex: 2 0 0;"></div>
+          <div class="vseg peak" style="flex: 4 0 0;"></div>
+          <div class="vseg idle" style="flex: 6 0 0;"></div>
+        </div>
+        <div class="cell-summary">周一 · 峰谷</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <div class="notice-title">📌 官方通知要点</div>
+    <ul>
+      <li><span class="notice-dot">·</span><span><strong>高峰时段定义：</strong>北京时间 9:00-12:00、14:00-18:00（其余为空闲时段）</span></li>
+      <li><span class="notice-dot">·</span><span><strong>生效时间：</strong>2026 年 8 月 23 日（周日）00:00 起调整峰谷计费规则</span></li>
+      <li><span class="notice-dot">·</span><span><strong>新规内容：</strong>周末（周六、周日）全天不再区分峰谷时段，统一按低谷时段价格计费</span></li>
+      <li><span class="notice-dot">·</span><span><strong>生效前结算：</strong>8/22 24:00 前的调用仍按原计费规则（周末同样分峰谷）</span></li>
+      <li><span class="notice-dot">·</span><span><strong>时段块读法：</strong>每行左侧时段块 = 该行时间刻度（HH:MM），颜色与日块一致，分段边界与右侧色条对齐</span></li>
+    </ul>
+  </div>
+
+  <footer>
+    DeepSeek API 峰谷计费日历 · 时段块版 · 数据源自官方通知
+  </footer>
+
+</div>
+<script>
+/* 从网络获取北京时间，自动高亮今日日块 + 实时时钟与峰谷状态 */
+(function () {
+  var badge = document.getElementById('today-badge');
+  var nowDate = document.getElementById('now-date');
+  var nowTime = document.getElementById('now-time');
+  var nowStatus = document.getElementById('now-status');
+  var offsetMs = 0;      /* 网络北京时间 - 本机时间 的差值 */
+  var netReady = false;
+
+  function nowBJ() { return new Date(Date.now() + offsetMs); }
+
+  /* 1) 多源网络时间 API（带超时，逐个 failover） */
+  function fetchNetworkTime() {
+    var sources = [
+      { url: 'https://worldtimeapi.org/api/timezone/Asia/Shanghai', parse: function (d) { return d.datetime; } },
+      { url: 'https://timeapi.io/api/Time/current/zone?timeZone=Asia%2FShanghai', parse: function (d) { return d.dateTime || d.datetime; } },
+      { url: 'https://api.m.taobao.com/rest/api3.do?api=mtop.common.getTimestamp', parse: function (d) { return String(d.data.t); } }
+    ];
+    function attempt(i) {
+      if (i >= sources.length) return Promise.reject(new Error('all sources failed'));
+      var s = sources[i];
+      return new Promise(function (resolve, reject) {
+        var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        var timer = setTimeout(function () { ctrl && ctrl.abort(); reject(new Error('timeout')); }, 4000);
+        fetch(s.url, ctrl ? { signal: ctrl.signal } : {})
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            clearTimeout(timer);
+            var v = s.parse(j);
+            var ms = /^\d{10}$/.test(String(v)) ? Number(v) * 1000 : Date.parse(v);
+            if (isNaN(ms)) return reject(new Error('bad payload'));
+            resolve(new Date(ms));
+          })
+          .catch(function (e) { clearTimeout(timer); reject(e); });
+      }).catch(function () { return attempt(i + 1); });
+    }
+    return attempt(0);
+  }
+
+  /* 2) 北京时间字段（UTC+8，不依赖本机时区） */
+  function bjFields(d) {
+    var s = new Date(d.getTime() + 8 * 3600 * 1000).toISOString();
+    return {
+      year: +s.slice(0, 4), month: +s.slice(5, 7), day: +s.slice(8, 10),
+      hour: +s.slice(11, 13), min: +s.slice(14, 16), sec: +s.slice(17, 19)
+    };
+  }
+
+  /* 3) 高亮对应日块 */
+  function highlight(dayNum) {
+    var cells = document.querySelectorAll('.day-cell .cell-num');
+    for (var i = 0; i < cells.length; i++) {
+      if (cells[i].textContent.trim() === String(dayNum)) {
+        cells[i].closest('.day-cell').classList.add('today');
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /* 4) 峰值状态判断 */
+  function peakStatus(f) {
+    var dow = new Date(Date.UTC(f.year, f.month - 1, f.day)).getUTCDay(); /* 0=周日 */
+    if (dow === 0 || dow === 6) return { key: 'weekend', text: '周末 · 全天低谷' };
+    var h = f.hour;
+    if ((h >= 9 && h < 12) || (h >= 14 && h < 18)) return { key: 'peak', text: '高峰时段' };
+    return { key: 'idle', text: '空闲时段' };
+  }
+
+  /* 5) 每秒刷新实时区 + 今日块内的实时时间线 */
+  function tick() {
+    var f = bjFields(nowBJ());
+    nowDate.textContent = '📅 日期：' + f.year + '-' + String(f.month).padStart(2, '0') + '-' + String(f.day).padStart(2, '0');
+    nowTime.textContent = '🕐 时间：' + String(f.hour).padStart(2, '0') + ':' + String(f.min).padStart(2, '0') + ':' + String(f.sec).padStart(2, '0');
+    var st = peakStatus(f);
+    nowStatus.textContent = '⏱ 状态：' + st.text;
+    nowStatus.className = 'now-item now-status ' + st.key;
+
+    /* 时间线：百分比 = 已过小时数 / 24（00:00 顶 → 24:00 底） */
+    var elapsedH = f.hour + f.min / 60 + f.sec / 3600;
+    var pct = (elapsedH / 24 * 100).toFixed(2) + '%';
+    var todayCell = document.querySelector('.day-cell.today');
+    if (todayCell) {
+      var bar = todayCell.querySelector('.cell-bar');
+      if (bar) {
+        var line = bar.querySelector('.now-line');
+        if (!line) {
+          line = document.createElement('div');
+          line.className = 'now-line';
+          bar.appendChild(line);
+        }
+        line.style.top = pct;
+      }
+    }
+  }
+
+  function apply(now, source) {
+    offsetMs = now.getTime() - Date.now();   /* 校准偏移 */
+    netReady = true;
+    var bj = bjFields(now);
+    var inMonth = bj.year === 2026 && bj.month === 8;
+    var src = source === '网络' ? '' : '（' + source + '）';
+    if (inMonth) {
+      highlight(bj.day);
+      badge.textContent = '🕐 今日' + src + '：2026-08-' + String(bj.day).padStart(2, '0');
+    } else {
+      badge.textContent = '🕐 今日' + src + '：2026-08-' + String(bj.day).padStart(2, '0') + '（不在本日历月份，未高亮）';
+    }
+    tick();
+    setInterval(tick, 1000);
+  }
+
+  /* 6) 执行：网络优先，本地降级 */
+  fetchNetworkTime()
+    .then(function (d) { apply(d, '网络'); })
+    .catch(function () {
+      apply(new Date(), '本机');
+      badge.textContent = badge.textContent.replace('本机', '本机（网络超时降级）');
+    });
+})();
+</script>
+</body>
+</html>
