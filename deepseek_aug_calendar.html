@@ -22,12 +22,6 @@
   }
   .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
   .header .subtitle { font-size: 14px; opacity: 0.92; }
-  .badge-row { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; }
-  .badge {
-    background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35);
-    padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500;
-    backdrop-filter: blur(8px);
-  }
 
   /* Now status strip */
   .now-strip {
@@ -295,11 +289,6 @@
 
   <div class="header">
     <h1 id="page-title">DeepSeek 峰谷日历</h1>
-    <div class="badge-row">
-      <span class="badge">⏱ 高峰 09:00-12:00 · 14:00-18:00</span>
-      <span class="badge">⚡ 新规 2026-08-23 00:00 起</span>
-      <span class="badge" id="today-badge">🕐 今日：获取中…</span>
-    </div>
   </div>
 
   <div class="now-strip" id="now-strip">
@@ -345,7 +334,6 @@
 <script>
 /* 日历按当前北京月份动态生成；网络取时校准；实时时钟与峰谷状态 */
 (function () {
-  var badge = document.getElementById('today-badge');
   var nowDate = document.getElementById('now-date');
   var nowTime = document.getElementById('now-time');
   var nowStatus = document.getElementById('now-status');
@@ -493,7 +481,7 @@
   }
 
   /* 9) 年月变更时（首载 / 跨月）重建日历 */
-  function renderMonth(f, src) {
+  function renderMonth(f) {
     rendered.year = f.year;
     rendered.month = f.month;
     buildCalendar(f.year, f.month);
@@ -501,9 +489,7 @@
     document.title = title;
     document.getElementById('page-title').textContent = title;
     document.getElementById('cal-title').textContent = f.year + ' 年 ' + f.month + ' 月 · 日历';
-    var dstr = f.year + '-' + pad2(f.month) + '-' + pad2(f.day);
-    var inMonth = highlight(f.day);
-    badge.textContent = '🕐 今日' + src + '：' + dstr + (inMonth ? '' : '（不在本月，未高亮）');
+    highlight(f.day);
   }
 
   /* 10) 每秒刷新实时区 + 今日块内的实时时间线 + 跨月检测 */
@@ -535,7 +521,7 @@
 
     /* 跨月自动重渲染 */
     if (f.year !== rendered.year || f.month !== rendered.month) {
-      renderMonth(f, '');
+      renderMonth(f);
       return;
     }
 
@@ -559,10 +545,13 @@
 
   function apply(now, source) {
     offsetMs = now.getTime() - Date.now();   /* 校准偏移 */
-    var src = source === '网络' ? '' : '（' + source + '）';
-    renderMonth(bjFields(now), src);
+    renderMonth(bjFields(now));
     tick();
     setInterval(tick, 1000);
+    /* 降级提示挂到日期区：仅网络超时走本机时间时显示 */
+    if (source !== '网络') {
+      nowDate.textContent += '（本机·网络超时降级）';
+    }
   }
 
   /* 11) 执行：网络优先，本地降级 */
@@ -570,7 +559,6 @@
     .then(function (d) { apply(d, '网络'); })
     .catch(function () {
       apply(new Date(), '本机');
-      badge.textContent = badge.textContent.replace('本机', '本机（网络超时降级）');
     });
 })();
 </script>
