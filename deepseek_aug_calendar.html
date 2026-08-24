@@ -43,15 +43,22 @@
   .now-item.now-status.idle { background: #bbf7d0; color: #15803d; }
   .now-item.now-status.allidle { background: #16a34a; color: #fff; }
   .now-item.now-status.weekend { background: #16a34a; color: #fff; }
-  /* Peak sticker: shown only during peak hours */
-  #peak-sticker {
+  /* Status stickers: shown per current billing status */
+  .status-sticker {
     display: none;
     height: 72px;
     border-radius: 10px;
+  }
+  #peak-sticker {
     box-shadow: 0 3px 10px rgba(185, 28, 28, 0.25);
     border: 2px solid #fecaca;
   }
+  #idle-sticker {
+    box-shadow: 0 3px 10px rgba(21, 128, 61, 0.25);
+    border: 2px solid #bbf7d0;
+  }
   .now-strip.peak-on #peak-sticker { display: block; }
+  .now-strip.idle-on #idle-sticker { display: block; }
 
   /* Legend */
   .legend-strip {
@@ -286,7 +293,8 @@
     <div class="now-item now-date" id="now-date">📅 日期：获取中…</div>
     <div class="now-item now-time" id="now-time">🕐 时间：--:--:--</div>
     <div class="now-item now-status" id="now-status">⏱ 状态：获取中…</div>
-    <img id="peak-sticker" src="peak-sticker.png" alt="高峰时段表情包">
+    <img id="peak-sticker" class="status-sticker" src="peak-sticker.png" alt="高峰时段表情包">
+    <img id="idle-sticker" class="status-sticker" src="idle-sticker.png" alt="空闲时段表情包">
   </div>
 
   <div class="legend-strip">
@@ -493,8 +501,10 @@
     var st = peakStatus(f);
     nowStatus.textContent = '⏱ 状态：' + st.text;
     nowStatus.className = 'now-item now-status ' + st.key;
-    /* 高峰期显示表情包，其余状态隐藏 */
-    document.getElementById('now-strip').classList.toggle('peak-on', st.key === 'peak');
+    /* 高峰期/空闲时段显示对应表情包，其余状态隐藏 */
+    var strip = document.getElementById('now-strip');
+    strip.classList.toggle('peak-on', st.key === 'peak');
+    strip.classList.toggle('idle-on', st.key === 'idle');
 
     /* 跨月自动重渲染 */
     if (f.year !== rendered.year || f.month !== rendered.month) {
