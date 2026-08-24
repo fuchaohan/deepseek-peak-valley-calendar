@@ -43,6 +43,15 @@
   .now-item.now-status.idle { background: #bbf7d0; color: #15803d; }
   .now-item.now-status.allidle { background: #16a34a; color: #fff; }
   .now-item.now-status.weekend { background: #16a34a; color: #fff; }
+  /* Peak sticker: shown only during peak hours */
+  #peak-sticker {
+    display: none;
+    height: 72px;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(185, 28, 28, 0.25);
+    border: 2px solid #fecaca;
+  }
+  .now-strip.peak-on #peak-sticker { display: block; }
 
   /* Legend */
   .legend-strip {
@@ -277,6 +286,7 @@
     <div class="now-item now-date" id="now-date">📅 日期：获取中…</div>
     <div class="now-item now-time" id="now-time">🕐 时间：--:--:--</div>
     <div class="now-item now-status" id="now-status">⏱ 状态：获取中…</div>
+    <img id="peak-sticker" src="peak-sticker.png" alt="高峰时段表情包">
   </div>
 
   <div class="legend-strip">
@@ -483,6 +493,8 @@
     var st = peakStatus(f);
     nowStatus.textContent = '⏱ 状态：' + st.text;
     nowStatus.className = 'now-item now-status ' + st.key;
+    /* 高峰期显示表情包，其余状态隐藏 */
+    document.getElementById('now-strip').classList.toggle('peak-on', st.key === 'peak');
 
     /* 跨月自动重渲染 */
     if (f.year !== rendered.year || f.month !== rendered.month) {
