@@ -13,7 +13,7 @@
     padding: 24px 16px;
     color: #1f2937;
   }
-  .container { max-width: 1180px; margin: 0 auto; }
+  .container { max-width: 1180px; margin: 0 auto; position: relative; }
 
   .header {
     background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
@@ -53,12 +53,21 @@
     box-shadow: 0 3px 10px rgba(185, 28, 28, 0.25);
     border: 2px solid #fecaca;
   }
+  /* Idle sticker rides on the gap between now-strip and legend-strip */
   #idle-sticker {
+    display: none;
+    position: absolute;
+    left: 50%;
+    bottom: 100%;
+    transform: translateX(-50%) translateY(55%);
+    z-index: 6;
+    height: 72px;
+    border-radius: 10px;
     box-shadow: 0 3px 10px rgba(21, 128, 61, 0.25);
     border: 2px solid #bbf7d0;
   }
   .now-strip.peak-on #peak-sticker { display: block; }
-  .now-strip.idle-on #idle-sticker { display: block; }
+  .now-strip.idle-on ~ .legend-strip #idle-sticker { display: block; }
 
   /* Legend */
   .legend-strip {
@@ -294,7 +303,6 @@
     <div class="now-item now-time" id="now-time">🕐 时间：--:--:--</div>
     <div class="now-item now-status" id="now-status">⏱ 状态：获取中…</div>
     <img id="peak-sticker" class="status-sticker" src="peak-sticker.png" alt="高峰时段表情包">
-    <img id="idle-sticker" class="status-sticker" src="idle-sticker.png" alt="空闲时段表情包">
   </div>
 
   <div class="legend-strip">
@@ -302,6 +310,7 @@
     <div class="legend-item"><div class="legend-swatch sw-peak"></div><span>高峰 09:00-12:00·14:00-18:00</span></div>
     <div class="legend-item"><div class="legend-swatch sw-idle"></div><span>空闲时段</span></div>
     <div class="legend-item"><div class="legend-swatch sw-allidle"></div><span>周末全天低谷</span></div>
+    <img id="idle-sticker" src="idle-sticker.png" alt="空闲时段表情包">
   </div>
 
   <div class="calendar-wrap">
