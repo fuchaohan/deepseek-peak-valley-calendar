@@ -53,14 +53,14 @@
     box-shadow: 0 3px 10px rgba(185, 28, 28, 0.25);
     border: 2px solid #fecaca;
   }
-  /* Idle sticker overlaps the bottom of now-strip and the top of legend-strip, anchored right.
-     Height AND vertical offset are set dynamically by JS so the sticker's center aligns with
-     the centerline of the gap between the two strips */
+  /* Idle sticker sits in the reserved right-hand blank zone (container-relative),
+     centered vertically on the gap centerline between now-strip and legend-strip.
+     Height and vertical offset are set dynamically by JS. */
   #idle-sticker {
     display: none;
     position: absolute;
     right: 20px;
-    bottom: 100%;
+    top: 0;
     z-index: 6;
     border-radius: 10px;
     box-shadow: 0 3px 10px rgba(21, 128, 61, 0.25);
@@ -69,12 +69,15 @@
   .now-strip.peak-on #peak-sticker { display: block; }
   .now-strip.idle-on ~ .legend-strip #idle-sticker { display: block; }
 
+  /* Reserve blank space on the right so the sticker never overlaps the strips */
+  .now-strip { margin-right: 136px; }
+  .legend-strip { margin-right: 136px; }
+
   /* Legend */
   .legend-strip {
     background: #fff; border-radius: 14px; padding: 14px 20px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.06); margin-bottom: 16px;
     display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
-    position: relative; /* positioning context for the idle sticker */
   }
   .legend-strip-title { font-size: 13px; font-weight: 700; color: #4b5563; margin-right: 6px; }
   .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #4b5563; }
@@ -515,16 +518,18 @@
     var strip = document.getElementById('now-strip');
     strip.classList.toggle('peak-on', st.key === 'peak');
     strip.classList.toggle('idle-on', st.key === 'idle');
-    /* 空闲表情：高度 = 两区块高度之和，中心点对齐两区块缝隙的中心线 */
+    /* 空闲表情：位于右侧预留空白区，高度 = 两区块高度之和，
+       垂直中心对齐两区块缝隙的中心线（相对 container 定位） */
     if (st.key === 'idle') {
       var legendEl = document.querySelector('.legend-strip');
       var idleImg = document.getElementById('idle-sticker');
       if (legendEl && idleImg) {
         var h = strip.offsetHeight + legendEl.offsetHeight;
         idleImg.style.height = h + 'px';
-        /* 缝隙中线（now 底 + legend 顶的中点）相对 legend 顶的距离 */
-        var gapMid = (legendEl.getBoundingClientRect().top - strip.getBoundingClientRect().bottom) / 2;
-        idleImg.style.transform = 'translateY(calc(50% - ' + gapMid + 'px))';
+        /* 缝隙中线相对 container 顶部的距离 = (now顶 + legend底)/2 - container顶 */
+        var cTop = document.querySelector('.container').getBoundingClientRect().top;
+        var midY = (strip.getBoundingClientRect().top + legendEl.getBoundingClientRect().bottom) / 2 - cTop;
+        idleImg.style.top = (midY - h / 2) + 'px';
       }
     }
 
