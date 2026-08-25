@@ -271,14 +271,40 @@
   footer { text-align: center; color: #9ca3af; font-size: 12px; margin-top: 24px; }
 
   @media (max-width: 768px) {
-    .header h1 { font-size: 20px; }
-    .cal-grid { grid-template-columns: 66px repeat(7, 1fr); gap: 3px; }
-    .day-cell { min-height: 120px; }
-    .row-time-block { min-height: 120px; }
-    .row-time-block .seg { font-size: 8px; }
+    /* 竖屏：压缩顶部信息区，日历保持 7 列并横向滑动查看 */
+    body { padding: 10px 8px; }
+    .header { padding: 16px 18px; border-radius: 14px; margin-bottom: 16px; }
+    .header h1 { font-size: 18px; }
+    .now-strip { padding: 10px 12px; gap: 8px; margin-bottom: 12px; }
+    .now-item { font-size: 12px; padding: 6px 10px; }
+    .legend-strip { padding: 10px 12px; gap: 10px; margin-bottom: 12px; }
+    .legend-strip-title { font-size: 12px; }
+    .legend-item { font-size: 10px; gap: 4px; }
+    .legend-swatch { width: 18px; height: 12px; }
+    .calendar-wrap { padding: 12px; margin-bottom: 14px; }
+    .calendar-title { font-size: 16px; }
+    .calendar-subtitle { font-size: 11px; margin-bottom: 10px; }
+    /* 时段列 78px + 7 列最小 52px：窄屏下整体宽度超出，横向滚动（.calendar-wrap overflow-x:auto 已开启） */
+    .cal-grid { grid-template-columns: 78px repeat(7, minmax(52px, 1fr)); gap: 3px; }
+    .cal-head { font-size: 11px; padding: 6px 0; }
+    .time-head-label { font-size: 9px; }
+    .row-time-block { min-height: 110px; border-radius: 8px; }
+    .row-time-block .seg { font-size: 6.5px; letter-spacing: -0.5px; }
+    .day-cell { min-height: 110px; border-radius: 8px; }
+    /* 触屏无 hover，去掉浮起效果避免误触卡顿 */
+    .day-cell:hover { transform: none; box-shadow: none; }
+    .cell-top { padding: 2px 4px; }
     .cell-num { font-size: 12px; }
-    .cell-summary { font-size: 8px; }
     .cell-tag { font-size: 8px; padding: 1px 3px; }
+    .cell-summary { font-size: 8px; padding: 2px 2px; }
+    .notice { padding: 14px 16px; }
+    .notice-title { font-size: 13px; }
+    .notice li { font-size: 12px; padding: 7px 0; }
+    footer { font-size: 10px; margin-top: 16px; }
+    /* 手机端缩小表情预留区（表情高度随区块高度自动变小） */
+    .now-strip { margin-right: 88px; }
+    .legend-strip { margin-right: 88px; }
+    #peak-sticker, #idle-sticker { right: 12px; }
   }
 </style>
 </head>
@@ -502,14 +528,16 @@
     var strip = document.getElementById('now-strip');
     strip.classList.toggle('peak-on', st.key === 'peak');
     strip.classList.toggle('idle-on', st.key === 'idle');
-    /* 两个表情位置完全一致：均位于右侧预留空白区，高度 = 两区块高度之和，
+    /* 两个表情位置完全一致：均位于右侧预留空白区，
        垂直中心对齐两区块缝隙的中心线（相对 container 定位）。
+       高度 = 两区块高度之和；手机竖屏（≤768px）上限 76px（预留区 margin-right 88px = 76 + right 12px）。
        每次 tick 同时设置两者，切换时位置绝对一致。 */
     if (st.key === 'peak' || st.key === 'idle') {
       var legendEl = document.querySelector('.legend-strip');
       var cTop = document.querySelector('.container').getBoundingClientRect().top;
       var midY = (strip.getBoundingClientRect().top + legendEl.getBoundingClientRect().bottom) / 2 - cTop;
       var h = strip.offsetHeight + legendEl.offsetHeight;
+      if (window.innerWidth <= 768 && h > 76) h = 76;
       ['peak-sticker', 'idle-sticker'].forEach(function (id) {
         var img = document.getElementById(id);
         if (img) {
