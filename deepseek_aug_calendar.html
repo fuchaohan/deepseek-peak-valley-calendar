@@ -93,7 +93,6 @@
     overflow-x: auto;
   }
   .calendar-title { font-size: 18px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
-  .calendar-subtitle { font-size: 12px; color: #6b7280; margin-bottom: 18px; }
 
   /* Grid: header row + N week rows (rows count set by JS); each row = 1 time-block + 7 day cells */
   .cal-grid {
@@ -289,7 +288,6 @@
     .legend-swatch { width: 18px; height: 12px; }
     .calendar-wrap { padding: 12px; margin-bottom: 14px; }
     .calendar-title { font-size: 16px; }
-    .calendar-subtitle { font-size: 11px; margin-bottom: 10px; }
     /* 时段列 78px + 7 列最小 52px：窄屏下整体宽度超出，横向滚动（.calendar-wrap overflow-x:auto 已开启） */
     .cal-grid { grid-template-columns: 78px repeat(7, minmax(52px, 1fr)); gap: 3px; }
     .cal-head { font-size: 11px; padding: 6px 0; }
@@ -339,7 +337,6 @@
 
   <div class="calendar-wrap">
     <div class="calendar-title" id="cal-title">…</div>
-    <div class="calendar-subtitle">每行最左为时段块：写 00:00-09:00 / 09:00-12:00 / 12:00-14:00 / 14:00-18:00 / 18:00-24:00，颜色与右侧日块一致，分段边界对齐。</div>
 
     <div class="cal-grid" id="cal-grid">
       <!-- 由 JS 按当前北京月份动态生成 -->
