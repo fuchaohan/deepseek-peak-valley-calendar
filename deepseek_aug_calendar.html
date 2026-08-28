@@ -67,10 +67,6 @@
   .now-strip.idle-on ~ .legend-strip #idle-sticker,
   .now-strip.weekend-on ~ .legend-strip #weekend-sticker { display: block; }
 
-  /* Reserve blank space on the right so the sticker never overlaps the strips */
-  .now-strip { margin-right: 136px; }
-  .legend-strip { margin-right: 136px; }
-
   /* Legend */
   .legend-strip {
     background: #fff; border-radius: 14px; padding: 14px 20px;
@@ -305,9 +301,7 @@
     .notice-title { font-size: 13px; }
     .notice li { font-size: 12px; padding: 7px 0; }
     footer { font-size: 10px; margin-top: 16px; }
-    /* 手机端缩小表情预留区（表情高度随区块高度自动变小） */
-    .now-strip { margin-right: 88px; }
-    .legend-strip { margin-right: 88px; }
+    /* 手机端表情右边距收窄（两区块预留宽度由 JS 动态设置，见 tick()） */
     #peak-sticker, #idle-sticker, #weekend-sticker { right: 12px; }
   }
 </style>
@@ -535,14 +529,21 @@
     strip.classList.toggle('weekend-on', st.key === 'weekend');
     /* 三个表情位置完全一致：均位于右侧预留空白区，
        垂直中心对齐两区块缝隙的中心线（相对 container 定位）。
-       高度 = 两区块高度之和；手机竖屏（≤768px）上限 76px（预留区 margin-right 88px = 76 + right 12px）。
+       高度 = 两区块高度之和；手机竖屏（≤768px）上限 76px。
+       两区块的预留宽度（margin-right）由 JS 动态设置为表情宽 + 右偏移，
+       使表情始终不与区块重叠，并自适应窗口/换行变化。
        每次 tick 同时设置三者，切换时位置绝对一致。 */
     if (st.key === 'peak' || st.key === 'idle' || st.key === 'weekend') {
       var legendEl = document.querySelector('.legend-strip');
       var cTop = document.querySelector('.container').getBoundingClientRect().top;
       var midY = (strip.getBoundingClientRect().top + legendEl.getBoundingClientRect().bottom) / 2 - cTop;
       var h = strip.offsetHeight + legendEl.offsetHeight;
-      if (window.innerWidth <= 768 && h > 76) h = 76;
+      var mobile = window.innerWidth <= 768;
+      if (mobile && h > 76) h = 76;
+      /* 动态预留宽度：表情宽(h，方形) + 右偏移(桌面 20 / 手机 12) */
+      var reserve = h + (mobile ? 12 : 20);
+      strip.style.marginRight = reserve + 'px';
+      legendEl.style.marginRight = reserve + 'px';
       ['peak-sticker', 'idle-sticker', 'weekend-sticker'].forEach(function (id) {
         var img = document.getElementById(id);
         if (img) {
