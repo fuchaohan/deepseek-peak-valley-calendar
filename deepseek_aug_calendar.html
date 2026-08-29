@@ -338,18 +338,20 @@
   </div>
 
   <div class="notice">
-    <div class="notice-title">📌 官方通知要点</div>
+    <div class="notice-title">📌 官方定价要点</div>
     <ul>
-      <li><span class="notice-dot">·</span><span><strong>高峰时段定义：</strong>北京时间 9:00-12:00、14:00-18:00（其余为空闲时段）</span></li>
-      <li><span class="notice-dot">·</span><span><strong>生效时间：</strong>2026 年 8 月 23 日（周日）00:00 起调整峰谷计费规则</span></li>
-      <li><span class="notice-dot">·</span><span><strong>新规内容：</strong>周末（周六、周日）全天不再区分峰谷时段，统一按低谷时段价格计费</span></li>
-      <li><span class="notice-dot">·</span><span><strong>生效前结算：</strong>8/22 24:00 前的调用仍按原计费规则（周末同样分峰谷）</span></li>
-      <li><span class="notice-dot">·</span><span><strong>时段块读法：</strong>每行左侧时段块 = 该行时间刻度（HH:MM），颜色与日块一致，分段边界与右侧色条对齐</span></li>
+      <li><span class="notice-dot">·</span><span><strong>高峰时段：</strong>北京时间周一至周五 9:00-12:00、14:00-18:00；其余（含周六、周日全天）为空闲时段</span></li>
+      <li><span class="notice-dot">·</span><span><strong>价格关系：</strong>空闲时段价格为高峰时段价格的一半（缓存命中/未命中均适用）</span></li>
+      <li><span class="notice-dot">·</span><span><strong>输入（缓存未命中）：</strong>deepseek-v4-flash 空闲 1.5 元 / 高峰 3.0 元；v4-pro 空闲 4.5 元 / 高峰 9.0 元（每百万 tokens）</span></li>
+      <li><span class="notice-dot">·</span><span><strong>输出：</strong>deepseek-v4-flash 空闲 4.5 元 / 高峰 9.0 元；v4-pro 空闲 13.5 元 / 高峰 27.0 元（每百万 tokens）</span></li>
+      <li><span class="notice-dot">·</span><span><strong>缓存命中：</strong>输入价低至空闲 0.05 元 / 高峰 0.10 元（v4-flash，每百万 tokens）</span></li>
+      <li><span class="notice-dot">·</span><span><strong>计费方式：</strong>扣减费用 = token 消耗量 × 模型单价，从充值/赠送余额扣减（优先赠送余额）</span></li>
+      <li><span class="notice-dot">·</span><span><strong>价格变动：</strong>产品价格可能调整，请以官方定价页面最新信息为准</span></li>
     </ul>
   </div>
 
   <footer>
-    DeepSeek API 峰谷计费日历 · 按当前月份动态生成 · 数据源自官方通知
+    DeepSeek API 峰谷计费日历 · 按当前月份动态生成 · 数据源自官方定价文档
   </footer>
 
 </div>
