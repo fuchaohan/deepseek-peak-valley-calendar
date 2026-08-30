@@ -139,6 +139,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    min-height: 1em; /* 最窄的 12:00-14:00 段高度可能不足一行文字，保证文字不被裁剪 */
     font-size: 9px;
     line-height: 1;
     font-weight: 700;
@@ -301,7 +302,7 @@
     .notice-title { font-size: 13px; }
     .notice li { font-size: 12px; padding: 7px 0; }
     footer { font-size: 10px; margin-top: 16px; }
-    /* 手机端表情右边距收窄（两区块预留宽度由 JS 动态设置，见 tick()） */
+    /* 手机端表情右边距收窄（两区块预留宽度由 JS 动态设置，见 layoutStickers()） */
     #peak-sticker, #idle-sticker, #weekend-sticker { right: 12px; }
   }
 </style>
@@ -344,7 +345,7 @@
       <li><span class="notice-dot">·</span><span><strong>价格关系：</strong>空闲时段价格为高峰时段价格的一半（缓存命中/未命中均适用）</span></li>
       <li><span class="notice-dot">·</span><span><strong>输入（缓存未命中）：</strong>deepseek-v4-flash 空闲 1.5 元 / 高峰 3.0 元；v4-pro 空闲 4.5 元 / 高峰 9.0 元（每百万 tokens）</span></li>
       <li><span class="notice-dot">·</span><span><strong>输出：</strong>deepseek-v4-flash 空闲 4.5 元 / 高峰 9.0 元；v4-pro 空闲 13.5 元 / 高峰 27.0 元（每百万 tokens）</span></li>
-      <li><span class="notice-dot">·</span><span><strong>缓存命中：</strong>输入价低至空闲 0.05 元 / 高峰 0.10 元（v4-flash，每百万 tokens）</span></li>
+      <li><span class="notice-dot">·</span><span><strong>缓存命中：</strong>v4-flash 空闲 0.05 元 / 高峰 0.10 元；v4-pro 空闲 0.15 元 / 高峰 0.30 元（每百万 tokens）</span></li>
       <li><span class="notice-dot">·</span><span><strong>计费方式：</strong>扣减费用 = token 消耗量 × 模型单价，从充值/赠送余额扣减（优先赠送余额）</span></li>
       <li><span class="notice-dot">·</span><span><strong>价格变动：</strong>产品价格可能调整，请以官方定价页面最新信息为准</span></li>
     </ul>
@@ -362,7 +363,13 @@
   var nowTime = document.getElementById('now-time');
   var nowStatus = document.getElementById('now-status');
   var grid = document.getElementById('cal-grid');
+  var strip = document.getElementById('now-strip');
+  var legendEl = document.querySelector('.legend-strip');
+  var containerEl = document.querySelector('.container');
+  var STICKER_IDS = ['peak-sticker', 'idle-sticker', 'weekend-sticker'];
+  var lastStatusKey = ''; /* 上次状态 key，状态切换时重排表情几何 */
   var offsetMs = 0;      /* 网络北京时间 - 本机时间 的差值 */
+  var localFallback = false; /* 网络取时失败、降级用本机时钟 */
   var rendered = { year: 0, month: 0 }; /* 当前已渲染的年月 */
 
   var WEEK_NAMES = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
@@ -381,8 +388,17 @@
   function fetchNetworkTime() {
     var sources = [
       { url: 'https://worldtimeapi.org/api/timezone/Asia/Shanghai', parse: function (d) { return d.datetime; } },
-      { url: 'https://timeapi.io/api/Time/current/zone?timeZone=Asia%2FShanghai', parse: function (d) { return d.dateTime || d.datetime; } },
-      { url: 'https://api.m.taobao.com/rest/api3.do?api=mtop.common.getTimestamp', parse: function (d) { return String(d.data.t); } }
+      { url: 'https://timeapi.io/api/Time/current/zone?timeZone=Asia%2FShanghai', parse: function (d) {
+          var v = String(d.dateTime || d.datetime || '');
+          /* 该接口返回值不带时区偏移，补 +08:00 防止 Date.parse 按本机时区解释 */
+          return /Z$|[+-]\d{2}:?\d{2}$/.test(v) ? v : v + '+08:00';
+        } },
+      { url: 'https://api.m.taobao.com/rest/api3.do?api=mtop.common.getTimestamp', parse: function (d) { return String(d.data.t); } },
+      /* 第四源：Cloudflare trace（CORS 开放），正文为 ts=<秒>，转成 13 位毫秒走通用解析 */
+      { url: 'https://www.cloudflare.com/cdn-cgi/trace', raw: true, parse: function (t) {
+          var m = /^ts=(\d+(?:\.\d+)?)$/m.exec(String(t));
+          return m ? String(Math.round(Number(m[1]) * 1000)) : '';
+        } }
     ];
     function attempt(i) {
       if (i >= sources.length) return Promise.reject(new Error('all sources failed'));
@@ -391,11 +407,14 @@
         var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
         var timer = setTimeout(function () { ctrl && ctrl.abort(); reject(new Error('timeout')); }, 4000);
         fetch(s.url, ctrl ? { signal: ctrl.signal } : {})
-          .then(function (r) { return r.json(); })
+          .then(function (r) { return s.raw ? r.text() : r.json(); })
           .then(function (j) {
             clearTimeout(timer);
-            var v = s.parse(j);
-            var ms = /^\d{10}$/.test(String(v)) ? Number(v) * 1000 : Date.parse(v);
+            var v = String(s.parse(j));
+            /* 兼容 10 位秒（×1000）与 13 位毫秒（淘宝源）两种纯数字时间戳 */
+            var ms = /^\d{13}$/.test(v) ? Number(v)
+              : /^\d{10}$/.test(v) ? Number(v) * 1000
+              : Date.parse(v);
             if (isNaN(ms)) return reject(new Error('bad payload'));
             resolve(new Date(ms));
           })
@@ -516,43 +535,49 @@
     highlight(f.day);
   }
 
+  /* 9.5) 表情包几何布局：仅在状态切换 / 窗口尺寸变化 / 资源就绪时调用，避免每秒 tick 强制重排。
+     三个表情位置完全一致：均位于右侧预留空白区，垂直中心对齐 now-strip 与图例区之间
+     缝隙的中心线（相对 container 定位）。高度 = 两区块高度之和；手机竖屏（≤768px）上限 76px。
+     两区块的预留宽度（margin-right）= 表情宽 + 右偏移 + 间隙，随窗口/换行自适应；
+     两轮迭代让「预留加宽 → 区块换行变化 → 高度变化」收敛后再定稿。 */
+  function layoutStickers() {
+    var mobile = window.innerWidth <= 768;
+    var h = 0, reserve = 0;
+    for (var pass = 0; pass < 2; pass++) {
+      h = strip.offsetHeight + legendEl.offsetHeight;
+      if (mobile && h > 76) h = 76;
+      /* 动态预留宽度：表情宽(h，方形) + 右偏移(桌面 20 / 手机 12) + 间隙(桌面 16 / 手机 10) */
+      reserve = h + (mobile ? 12 : 20) + (mobile ? 10 : 16);
+      strip.style.marginRight = reserve + 'px';
+      legendEl.style.marginRight = reserve + 'px';
+    }
+    var cTop = containerEl.getBoundingClientRect().top;
+    var midY = (strip.getBoundingClientRect().bottom + legendEl.getBoundingClientRect().top) / 2 - cTop;
+    STICKER_IDS.forEach(function (id) {
+      var img = document.getElementById(id);
+      if (img) {
+        img.style.height = h + 'px';
+        img.style.top = (midY - h / 2) + 'px';
+      }
+    });
+  }
+
   /* 10) 每秒刷新实时区 + 今日块内的实时时间线 + 跨月检测 */
   function tick() {
     var f = bjFields(nowBJ());
-    nowDate.textContent = '📅 日期：' + f.year + '-' + pad2(f.month) + '-' + pad2(f.day);
+    nowDate.textContent = '📅 日期：' + f.year + '-' + pad2(f.month) + '-' + pad2(f.day)
+      + (localFallback ? '（本机·网络超时降级）' : '');
     nowTime.textContent = '🕐 时间：' + pad2(f.hour) + ':' + pad2(f.min) + ':' + pad2(f.sec);
     var st = peakStatus(f);
     nowStatus.textContent = '⏱ 状态：' + st.text;
     nowStatus.className = 'now-item now-status ' + st.key;
-    /* 三个状态互斥显示对应表情包 */
-    var strip = document.getElementById('now-strip');
+    /* 三个状态互斥显示对应表情包；状态切换时重排一次表情几何（见 layoutStickers） */
     strip.classList.toggle('peak-on', st.key === 'peak');
     strip.classList.toggle('idle-on', st.key === 'idle');
     strip.classList.toggle('weekend-on', st.key === 'weekend');
-    /* 三个表情位置完全一致：均位于右侧预留空白区，
-       垂直中心对齐两区块缝隙的中心线（相对 container 定位）。
-       高度 = 两区块高度之和；手机竖屏（≤768px）上限 76px。
-       两区块的预留宽度（margin-right）由 JS 动态设置为表情宽 + 右偏移 + 间隙，
-       使表情与区块之间留出恰当距离、不贴合，并自适应窗口/换行变化。
-       每次 tick 同时设置三者，切换时位置绝对一致。 */
-    if (st.key === 'peak' || st.key === 'idle' || st.key === 'weekend') {
-      var legendEl = document.querySelector('.legend-strip');
-      var cTop = document.querySelector('.container').getBoundingClientRect().top;
-      var midY = (strip.getBoundingClientRect().top + legendEl.getBoundingClientRect().bottom) / 2 - cTop;
-      var h = strip.offsetHeight + legendEl.offsetHeight;
-      var mobile = window.innerWidth <= 768;
-      if (mobile && h > 76) h = 76;
-      /* 动态预留宽度：表情宽(h，方形) + 右偏移(桌面 20 / 手机 12) + 间隙(桌面 16 / 手机 10) */
-      var reserve = h + (mobile ? 12 : 20) + (mobile ? 10 : 16);
-      strip.style.marginRight = reserve + 'px';
-      legendEl.style.marginRight = reserve + 'px';
-      ['peak-sticker', 'idle-sticker', 'weekend-sticker'].forEach(function (id) {
-        var img = document.getElementById(id);
-        if (img) {
-          img.style.height = h + 'px';
-          img.style.top = (midY - h / 2) + 'px';
-        }
-      });
+    if (st.key !== lastStatusKey) {
+      lastStatusKey = st.key;
+      layoutStickers();
     }
 
     /* 跨月自动重渲染 */
@@ -581,13 +606,13 @@
 
   function apply(now, source) {
     offsetMs = now.getTime() - Date.now();   /* 校准偏移 */
+    localFallback = source !== '网络'; /* 降级标志由 tick() 拼进日期文案，避免被每秒覆写冲掉 */
     renderMonth(bjFields(now));
     tick();
     setInterval(tick, 1000);
-    /* 降级提示挂到日期区：仅网络超时走本机时间时显示 */
-    if (source !== '网络') {
-      nowDate.textContent += '（本机·网络超时降级）';
-    }
+    /* 表情几何随窗口尺寸/换行变化，resize 时重排；load 兜底晚到资源造成的高度漂移 */
+    window.addEventListener('resize', layoutStickers);
+    window.addEventListener('load', layoutStickers);
   }
 
   /* 11) 执行：网络优先，本地降级 */
