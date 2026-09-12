@@ -5,39 +5,92 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DeepSeek 峰谷日历</title>
   <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  /* ==== DeepSeek 设计 token（取自 deepseek.com / api-docs.deepseek.com 实际 CSS 变量）==== */
+  :root {
+    --ds-brand: #4d6bfe;
+    --ds-brand-deep: #3a65c2;
+    --ds-bg-page: #f9f8f8;
+    --ds-bg-dark: #1a1615;
+    --ds-text-primary: #1e232c;
+    --ds-text-bluish: #152443;
+    --ds-text-secondary: rgba(0, 0, 0, .7);
+    --ds-text-description: rgba(0, 0, 0, .65);
+    --ds-text-placeholder: #8691a1;
+    --ds-text-link: #234792;
+    --ds-border-subtle: rgba(0, 0, 0, .06);
+    --ds-border-default: rgba(0, 0, 0, .1);
+    --ds-border-divider: rgba(0, 0, 0, .08);
+    --ds-radius-card: 24px;
+    --ds-radius-panel: 16px;
+    --ds-radius-media: 12px;
+    --ds-radius-sm: 8px;
+    --ds-radius-pill: 100px;
+    --ds-font-body: "DM Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --ds-font-mono: "Fragment Mono", "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --ds-amber-100: #fef5e7;
+    --ds-amber-400: #f7ad31;
+    --ds-amber-500: #f59e0b;
+    --ds-amber-600: #dd8629;
+    /* 峰谷语义色：属于数据编码，非品牌色，保持红/绿可读性 */
+    --seg-peak: #ef4444;
+    --seg-peak-light: #f87171;
+    --seg-idle: #10b981;
+    --seg-idle-light: #6ee7b7;
+    --seg-allidle: #16a34a;
+    --seg-allidle-light: #22c55e;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-    background: linear-gradient(135deg, #f0f4ff 0%, #fef6f0 100%);
+    font-family: var(--ds-font-body);
+    background: var(--ds-bg-page);
     min-height: 100vh;
-    padding: 24px 16px;
-    color: #1f2937;
+    padding: 28px 20px;
+    color: var(--ds-text-primary);
+    -webkit-font-smoothing: antialiased;
   }
   .container { max-width: 1180px; margin: 0 auto; position: relative; }
 
   .header {
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
-    border-radius: 16px; padding: 28px 32px; color: #fff;
-    box-shadow: 0 10px 30px rgba(79, 70, 229, 0.3); margin-bottom: 24px;
+    background: #fff;
+    border: 1px solid var(--ds-border-subtle);
+    border-radius: var(--ds-radius-card);
+    padding: 30px 32px;
+    margin-bottom: 16px;
+    text-align: center;
   }
-  .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; text-align: center; }
-  .header .subtitle { font-size: 14px; opacity: 0.92; }
+  .header h1 {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 30px; font-weight: 600; letter-spacing: -0.02em;
+    color: var(--ds-text-bluish); margin-bottom: 6px;
+  }
+  .header h1::before {
+    content: ""; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--ds-brand); flex-shrink: 0;
+  }
+  .header .subtitle { font-size: 14px; color: var(--ds-text-description); }
 
   /* Now status strip */
   .now-strip {
-    background: #fff; border-radius: 14px; padding: 14px 20px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06); margin-bottom: 16px;
+    background: #fff; border: 1px solid var(--ds-border-subtle);
+    border-radius: var(--ds-radius-panel); padding: 14px 20px;
+    margin-bottom: 16px;
     display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
   }
   .now-item {
-    font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 10px;
-    background: #f3f4f6; color: #111827; font-variant-numeric: tabular-nums;
+    font-size: 14px; font-weight: 600; padding: 8px 16px;
+    border-radius: var(--ds-radius-pill);
+    background: #f5f6f7; color: var(--ds-text-primary);
+    border: 1px solid var(--ds-border-subtle);
+    font-variant-numeric: tabular-nums;
   }
-  .now-item.now-status.peak { background: #fecaca; color: #b91c1c; }
-  .now-item.now-status.idle { background: #bbf7d0; color: #15803d; }
-  .now-item.now-status.allidle { background: #16a34a; color: #fff; }
-  .now-item.now-status.weekend { background: #16a34a; color: #fff; }
+  .now-item.now-status.peak { background: rgba(239, 68, 68, .1); color: #b91c1c; border-color: rgba(239, 68, 68, .24); }
+  .now-item.now-status.idle { background: rgba(22, 163, 74, .1); color: #15803d; border-color: rgba(22, 163, 74, .24); }
+  .now-item.now-status.allidle { background: rgba(22, 163, 74, .1); color: #15803d; border-color: rgba(22, 163, 74, .24); }
+  .now-item.now-status.weekend { background: rgba(22, 163, 74, .1); color: #15803d; border-color: rgba(22, 163, 74, .24); }
   /* All three status stickers share the same reserved right-hand blank zone (container-relative),
      centered vertically on the gap centerline between now-strip and legend-strip.
      Height and vertical offset are set dynamically by JS. */
@@ -52,16 +105,16 @@
     border-radius: 10px;
   }
   #peak-sticker {
-    box-shadow: 0 3px 10px rgba(185, 28, 28, 0.25);
-    border: 2px solid #fecaca;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .06);
+    border: 2px solid rgba(239, 68, 68, .24);
   }
   #idle-sticker {
-    box-shadow: 0 3px 10px rgba(21, 128, 61, 0.25);
-    border: 2px solid #bbf7d0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .06);
+    border: 2px solid rgba(22, 163, 74, .24);
   }
   #weekend-sticker {
-    box-shadow: 0 3px 10px rgba(22, 163, 74, 0.25);
-    border: 2px solid #15803d;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .06);
+    border: 2px solid rgba(22, 163, 74, .24);
   }
   .now-strip.peak-on ~ .legend-strip #peak-sticker,
   .now-strip.idle-on ~ .legend-strip #idle-sticker,
@@ -69,26 +122,31 @@
 
   /* Legend */
   .legend-strip {
-    background: #fff; border-radius: 14px; padding: 14px 20px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06); margin-bottom: 16px;
+    background: #fff; border: 1px solid var(--ds-border-subtle);
+    border-radius: var(--ds-radius-panel); padding: 14px 20px;
+    margin-bottom: 16px;
     display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
   }
-  .legend-strip-title { font-size: 13px; font-weight: 700; color: #4b5563; margin-right: 6px; }
-  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #4b5563; }
+  .legend-strip-title { font-size: 13px; font-weight: 700; color: var(--ds-text-bluish); margin-right: 6px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ds-text-description); }
   .legend-swatch {
-    width: 22px; height: 14px; border-radius: 3px; border: 1px solid;
+    width: 22px; height: 14px; border-radius: 4px; border: 1px solid;
   }
-  .sw-peak { background: linear-gradient(180deg, #ef4444, #f87171); border-color: #dc2626; }
-  .sw-idle { background: linear-gradient(180deg, #6ee7b7, #10b981); border-color: #059669; }
-  .sw-allidle { background: linear-gradient(180deg, #16a34a, #22c55e); border-color: #15803d; }
+  .sw-peak { background: linear-gradient(180deg, var(--seg-peak), var(--seg-peak-light)); border-color: #dc2626; }
+  .sw-idle { background: linear-gradient(180deg, var(--seg-idle-light), var(--seg-idle)); border-color: #059669; }
+  .sw-allidle { background: linear-gradient(180deg, var(--seg-allidle), var(--seg-allidle-light)); border-color: #15803d; }
 
   /* Calendar wrap */
   .calendar-wrap {
-    background: #fff; border-radius: 14px; padding: 20px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06); margin-bottom: 20px;
+    background: #fff; border: 1px solid var(--ds-border-subtle);
+    border-radius: var(--ds-radius-card); padding: 20px;
+    margin-bottom: 16px;
     overflow-x: auto;
   }
-  .calendar-title { font-size: 18px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+  .calendar-title {
+    font-size: 18px; font-weight: 600; letter-spacing: -0.01em;
+    color: var(--ds-text-bluish); margin-bottom: 8px;
+  }
 
   /* Grid: header row + N week rows (rows count set by JS); each row = 1 time-block + 7 day cells */
   .cal-grid {
@@ -103,18 +161,18 @@
     text-align: center;
     font-size: 12px;
     font-weight: 600;
-    color: #6b7280;
+    color: var(--ds-text-description);
     padding: 8px 0;
     background: #f9fafb;
-    border-radius: 6px;
+    border-radius: var(--ds-radius-sm);
   }
   .cal-head.weekend { color: #ef4444; }
   .cal-head.sunday { color: #dc2626; }
 
   .time-head-label {
     background: #ffffff;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 6px;
+    border: 1px solid var(--ds-border-subtle);
+    border-radius: var(--ds-radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -130,8 +188,8 @@
     display: flex;
     flex-direction: column;
     background: #ffffff;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 10px;
+    border: 1px solid var(--ds-border-subtle);
+    border-radius: var(--ds-radius-media);
     overflow: hidden;
     min-height: 150px;
   }
@@ -149,15 +207,15 @@
     overflow: hidden;
   }
   .row-time-block .seg.idle {
-    background: linear-gradient(90deg, #6ee7b7, #10b981);
+    background: linear-gradient(90deg, var(--seg-idle-light), var(--seg-idle));
     color: #064e3b;
     text-shadow: none;
   }
   .row-time-block .seg.peak {
-    background: linear-gradient(90deg, #ef4444, #f87171);
+    background: linear-gradient(90deg, var(--seg-peak), var(--seg-peak-light));
   }
   .row-time-block .seg.allidle {
-    background: linear-gradient(90deg, #16a34a, #22c55e);
+    background: linear-gradient(90deg, var(--seg-allidle), var(--seg-allidle-light));
   }
   /* no borders between segs: borders would steal 1px each and skew the flex ratio */
   .row-time-block .seg + .seg { border-top: 0; }
@@ -165,18 +223,18 @@
   /* Day cells */
   .day-cell {
     background: #fff;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 10px;
+    border: 1px solid var(--ds-border-subtle);
+    border-radius: var(--ds-radius-media);
     padding: 0;
     display: flex;
     flex-direction: column;
     min-height: 150px;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
     overflow: hidden;
   }
   .day-cell:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 14px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .07);
     z-index: 2;
   }
   .day-cell.empty {
@@ -186,12 +244,12 @@
   }
   .day-cell.empty:hover { transform: none; box-shadow: none; }
 
-  .day-cell.workday { background: #fff; border-color: #fca5a5; }
-  .day-cell.weekend-new { background: #fff; border-color: #86efac; }
-  /* Today highlight: orange 2.5px border + glow */
+  .day-cell.workday { background: #fff; border-color: rgba(239, 68, 68, .22); }
+  .day-cell.weekend-new { background: #fff; border-color: rgba(22, 163, 74, .22); }
+  /* Today highlight: DeepSeek 琥珀色 token + 柔和光晕 */
   .day-cell.today {
-    border: 2.5px solid #f59e0b;
-    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
+    border: 2px solid var(--ds-amber-500);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, .14);
   }
   /* Real-time "now" line inside the today cell */
   .day-cell.today { position: relative; }
@@ -199,8 +257,8 @@
     position: absolute;
     left: 0; right: 0;
     height: 2px;
-    background: #f59e0b;
-    box-shadow: 0 0 6px rgba(245, 158, 11, 0.9);
+    background: var(--ds-amber-500);
+    box-shadow: 0 0 6px rgba(245, 158, 11, .9);
     z-index: 5;
     pointer-events: none;
   }
@@ -210,8 +268,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 4px 6px;
-    border-bottom: 1px solid #f3f4f6;
-    background: rgba(255,255,255,0.85);
+    border-bottom: 1px solid var(--ds-border-subtle);
+    background: rgba(255, 255, 255, 0.85);
   }
   .cell-num {
     font-size: 14px;
@@ -224,11 +282,11 @@
   .cell-tag {
     font-size: 9px;
     padding: 1px 5px;
-    border-radius: 4px;
+    border-radius: var(--ds-radius-sm);
     font-weight: 600;
   }
-  .day-cell.workday .cell-tag { background: #fecaca; color: #991b1b; }
-  .day-cell.weekend-new .cell-tag { background: #16a34a; color: #ffffff; }
+  .day-cell.workday .cell-tag { background: rgba(239, 68, 68, .1); color: #b91c1c; }
+  .day-cell.weekend-new .cell-tag { background: rgba(22, 163, 74, .12); color: #15803d; }
 
   /* Vertical bar inside each day cell (same segment order as row time block) */
   .cell-bar {
@@ -239,82 +297,89 @@
     position: relative;
   }
   .cell-bar .vseg { width: 100%; }
-  .cell-bar .vseg.peak { background: linear-gradient(180deg, #ef4444, #f87171); }
-  .cell-bar .vseg.idle { background: linear-gradient(180deg, #6ee7b7, #10b981); }
-  .cell-bar .vseg.allidle { background: linear-gradient(180deg, #16a34a, #22c55e); }
+  .cell-bar .vseg.peak { background: linear-gradient(180deg, var(--seg-peak), var(--seg-peak-light)); }
+  .cell-bar .vseg.idle { background: linear-gradient(180deg, var(--seg-idle-light), var(--seg-idle)); }
+  .cell-bar .vseg.allidle { background: linear-gradient(180deg, var(--seg-allidle), var(--seg-allidle-light)); }
 
   .cell-summary {
     font-size: 9px;
-    color: #6b7280;
+    color: var(--ds-text-description);
     line-height: 1.3;
     text-align: center;
     padding: 2px 4px;
-    border-top: 1px solid #f3f4f6;
-    background: rgba(255,255,255,0.85);
+    border-top: 1px solid var(--ds-border-subtle);
+    background: rgba(255, 255, 255, 0.85);
   }
   .day-cell.workday .cell-summary { color: #dc2626; font-weight: 600; }
   .day-cell.weekend-new .cell-summary { color: #16a34a; font-weight: 600; }
 
   /* Notice */
   .notice {
-    background: #fff; border-radius: 14px; padding: 20px 24px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06); border-left: 4px solid #4f46e5;
+    background: #fff; border-radius: var(--ds-radius-card); padding: 20px 24px;
+    border: 1px solid var(--ds-border-subtle); border-left: 4px solid var(--ds-brand);
+    margin-bottom: 16px;
   }
-  .notice-title { font-size: 14px; font-weight: 700; color: #4f46e5; margin-bottom: 10px; }
+  .notice-title { font-size: 14px; font-weight: 700; color: var(--ds-brand-deep); margin-bottom: 10px; }
   .notice ul { list-style: none; padding: 0; }
   .notice li {
-    padding: 8px 0; font-size: 13px; color: #374151;
-    border-bottom: 1px solid #f3f4f6; display: flex; gap: 10px; align-items: flex-start;
+    padding: 8px 0; font-size: 13px; color: var(--ds-text-secondary);
+    border-bottom: 1px solid var(--ds-border-subtle); display: flex; gap: 10px; align-items: flex-start;
   }
   .notice li:last-child { border-bottom: none; }
-  .notice-dot { color: #4f46e5; font-weight: 700; flex-shrink: 0; }
-  .notice strong { color: #1f2937; }
-  .notice { margin-bottom: 16px; }
+  .notice-dot { color: var(--ds-brand); font-weight: 700; flex-shrink: 0; }
+  .notice strong { color: var(--ds-text-bluish); }
   .notice + .notice { margin-top: 0; }
-  /* 最新公告：amber 强调，与常驻的定价要点区分 */
-  .notice-alert { border-left-color: #f59e0b; background: #fffdf7; }
-  .notice-alert .notice-title { color: #b45309; }
-  .notice-alert .notice-dot { color: #f59e0b; }
+  /* 最新公告：DeepSeek 琥珀色 token，与常驻的定价要点区分 */
+  .notice-alert {
+    border-color: rgba(245, 158, 11, .2);
+    border-left: 4px solid var(--ds-amber-500);
+    background: var(--ds-amber-100);
+  }
+  .notice-alert .notice-title { color: var(--ds-amber-600); }
+  .notice-alert .notice-dot { color: var(--ds-amber-500); }
+  .notice-alert li { border-bottom-color: rgba(245, 158, 11, .18); }
   .notice-date {
     display: inline-block; font-size: 11px; font-weight: 700;
-    color: #92400e; background: #fef3c7; border-radius: 4px;
+    color: #92400e; background: rgba(245, 158, 11, .16); border-radius: 4px;
     padding: 1px 6px; margin: 0 1px;
   }
   .notice code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 12px; background: #eef2ff; color: #4338ca;
-    border-radius: 4px; padding: 1px 5px;
+    font-family: var(--ds-font-mono);
+    font-size: 12px; background: rgba(0, 0, 0, .05); color: var(--ds-brand-deep);
+    border-radius: 6px; padding: 1px 5px;
   }
 
-  footer { text-align: center; color: #9ca3af; font-size: 12px; margin-top: 24px; }
+  footer { text-align: center; color: var(--ds-text-placeholder); font-size: 12px; margin-top: 24px; }
 
   @media (max-width: 768px) {
     /* 竖屏：压缩顶部信息区，日历保持 7 列并横向滑动查看 */
-    body { padding: 10px 8px; }
-    .header { padding: 16px 18px; border-radius: 14px; margin-bottom: 16px; }
-    .header h1 { font-size: 18px; }
+    body { padding: 12px 10px; }
+    .header { padding: 20px 18px; border-radius: var(--ds-radius-panel); margin-bottom: 12px; }
+    .header h1 { font-size: 19px; gap: 8px; }
+    .header h1::before { width: 8px; height: 8px; }
+    .header .subtitle { font-size: 12px; }
     .now-strip { padding: 10px 12px; gap: 8px; margin-bottom: 12px; }
-    .now-item { font-size: 12px; padding: 6px 10px; }
+    .now-item { font-size: 12px; padding: 6px 12px; }
     .legend-strip { padding: 10px 12px; gap: 10px; margin-bottom: 12px; }
     .legend-strip-title { font-size: 12px; }
     .legend-item { font-size: 10px; gap: 4px; }
     .legend-swatch { width: 18px; height: 12px; }
-    .calendar-wrap { padding: 12px; margin-bottom: 14px; }
+    .calendar-wrap { padding: 12px; margin-bottom: 12px; border-radius: var(--ds-radius-panel); }
     .calendar-title { font-size: 16px; }
     /* 时段列 78px + 7 列最小 52px：窄屏下整体宽度超出，横向滚动（.calendar-wrap overflow-x:auto 已开启） */
     .cal-grid { grid-template-columns: 78px repeat(7, minmax(52px, 1fr)); gap: 3px; }
     .cal-head { font-size: 11px; padding: 6px 0; }
     .time-head-label { font-size: 9px; }
-    .row-time-block { min-height: 110px; border-radius: 8px; }
+    .row-time-block { min-height: 110px; }
     .row-time-block .seg { font-size: 6.5px; letter-spacing: -0.5px; }
-    .day-cell { min-height: 110px; border-radius: 8px; }
+    .day-cell { min-height: 110px; }
     /* 触屏无 hover，去掉浮起效果避免误触卡顿 */
     .day-cell:hover { transform: none; box-shadow: none; }
     .cell-top { padding: 2px 4px; }
     .cell-num { font-size: 12px; }
     .cell-tag { font-size: 8px; padding: 1px 3px; }
     .cell-summary { font-size: 8px; padding: 2px 2px; }
-    .notice { padding: 14px 16px; }
+    .notice { padding: 16px; border-radius: var(--ds-radius-panel); }
     .notice-title { font-size: 13px; }
     .notice li { font-size: 12px; padding: 7px 0; }
     .notice-date { font-size: 10px; padding: 1px 5px; }
@@ -330,6 +395,7 @@
 
   <div class="header">
     <h1 id="page-title">DeepSeek 峰谷日历</h1>
+    <div class="subtitle">北京时间峰谷计费 · 空闲时段价格为高峰时段的一半</div>
   </div>
 
   <div class="now-strip" id="now-strip">
