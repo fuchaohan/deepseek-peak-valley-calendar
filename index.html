@@ -7,7 +7,10 @@
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- 异步加载：大陆网络下 fonts.googleapis.com 不可靠，阻塞式 stylesheet 会拖慢首屏；
+       字体栈有 system-ui 兜底，加载失败仅回退 -->
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
 <style>
   /* ==== DeepSeek 设计 token（取自 deepseek.com / api-docs.deepseek.com 实际 CSS 变量）==== */
   :root {
@@ -71,9 +74,7 @@
   .ds-bg canvas {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     display: block;
-    /* 官方网格为均匀透明度；仅在底部淡出，避免在 880px 处出现硬切边 */
-    -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
-    mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
+    /* 底部渐隐直接画进 canvas（destination-out 渐变擦除），不依赖 mask-image 兼容性 */
   }
 
   .header {
@@ -241,6 +242,9 @@
   }
   /* no borders between segs: borders would steal 1px each and skew the flex ratio */
   .row-time-block .seg + .seg { border-top: 0; }
+  /* 左列时段块的表头与数字：结构同日块、配色中性（token 化，替代旧内联样式） */
+  .row-time-block .cell-top { background: #f9fafb; justify-content: center; }
+  .row-time-block .cell-num { color: var(--ds-text-description); }
 
   /* Day cells */
   .day-cell {
@@ -561,7 +565,7 @@
       segs += segHtml('seg ' + SEGS[i].cls + ' vseg', SEGS[i].flex, SEGS[i].text);
     }
     return '<div class="row-time-block">'
-      + '<div class="cell-top" style="background:#f9fafb;justify-content:center;"><span class="cell-num" style="color:#6b7280;">时段</span></div>'
+      + '<div class="cell-top"><span class="cell-num">时段</span></div>'
       + '<div class="cell-bar">' + segs + '</div>'
       + '<div class="cell-summary">第 ' + weekNum + ' 周</div>'
       + '</div>';
@@ -720,29 +724,42 @@
     }
   }
 
-  function apply(now, source) {
+  function apply(now, isNetwork) {
     offsetMs = now.getTime() - Date.now();   /* 校准偏移 */
-    localFallback = source !== '网络'; /* 降级标志由 tick() 拼进日期文案，避免被每秒覆写冲掉 */
+    if (isNetwork) localFallback = false;    /* 仅网络成功才清除降级；启动渲染默认不提示（初值 false） */
     renderMonth(bjFields(now));
     tick();
-    setInterval(tick, 1000);
-    /* 表情几何随窗口尺寸/换行变化，resize 时重排；load 兜底晚到资源造成的高度漂移 */
-    window.addEventListener('resize', layoutStickers);
-    window.addEventListener('load', layoutStickers);
   }
 
-  /* 11) 执行：网络优先，本地降级 */
+  /* 11) 执行：本机时间先渲染（首屏不等网络，期间不显示降级提示），
+         网络时间到达后静默校准并重渲染；仅当四源全部失败才置降级标志常驻提示 */
+  apply(new Date(), false);
   fetchNetworkTime()
-    .then(function (d) { apply(d, '网络'); })
+    .then(function (d) { apply(d, true); })
     .catch(function () {
-      apply(new Date(), '本机');
+      localFallback = true;
+      tick();
     });
+  setInterval(tick, 1000);
+  /* 表情几何随窗口尺寸/换行变化，resize 时重排；load 兜底晚到资源造成的高度漂移 */
+  window.addEventListener('resize', layoutStickers);
+  window.addEventListener('load', layoutStickers);
+  /* 字体为异步加载，字体文件就绪后的度量变化需要重排一次表情几何 */
+  var fontCss = document.querySelector('link[href*="fonts.googleapis"]');
+  var relayoutWhenFontsSettle = function () {
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(layoutStickers).catch(function () {});
+    }
+  };
+  if (fontCss) fontCss.addEventListener('load', relayoutWhenFontsSettle);
+  relayoutWhenFontsSettle();
 })();
 </script>
 <script>
 /* 官网背景层：技术网格（参数移植自 deepseek.com 的 ds-flow-field-canvas）
    90px 网格；横向/纵向虚线（两端各留 10px 间隙）；交点圆点 r=1.8。
-   线 rgba(60,100,160,.1) 宽 0.5，点 rgba(60,100,160,.04)。仅随尺寸重绘，无动画。 */
+   线 rgba(60,100,160,.1) 宽 0.5，点 rgba(60,100,160,.04)。仅随尺寸重绘，无动画；
+   底部 72% 以下渐隐（画进 canvas，不依赖 CSS mask）。 */
 (function () {
   var canvas = document.getElementById('ds-grid-canvas');
   if (!canvas) return;
@@ -787,6 +804,15 @@
     for (var i = 0; i < pts.length; i++) {
       ctx.beginPath(); ctx.arc(pts[i].x, pts[i].y, DOT_R, 0, 2 * Math.PI); ctx.fill();
     }
+    /* 底部渐隐（72% → 100%）：destination-out 渐变擦除，替代 CSS mask-image */
+    var fadeStart = h * 0.72;
+    var fade = ctx.createLinearGradient(0, fadeStart, 0, h);
+    fade.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    fade.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, fadeStart, w, h - fadeStart);
+    ctx.globalCompositeOperation = 'source-over';
   }
 
   function resize() {
