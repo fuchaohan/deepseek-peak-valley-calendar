@@ -114,6 +114,7 @@
   .now-item.now-status.idle { background: rgba(22, 163, 74, .1); color: #15803d; border-color: rgba(22, 163, 74, .24); }
   .now-item.now-status.allidle { background: rgba(22, 163, 74, .1); color: #15803d; border-color: rgba(22, 163, 74, .24); }
   .now-item.now-status.weekend { background: rgba(22, 163, 74, .1); color: #15803d; border-color: rgba(22, 163, 74, .24); }
+  .now-item.now-status.holiday { background: rgba(22, 163, 74, .1); color: #15803d; border-color: rgba(22, 163, 74, .24); }
   /* All three status stickers share the same reserved right-hand blank zone (container-relative),
      centered vertically on the gap centerline between now-strip and legend-strip.
      Height and vertical offset are set dynamically by JS. */
@@ -313,6 +314,8 @@
   }
   .day-cell.workday .cell-tag { background: rgba(239, 68, 68, .1); color: #b91c1c; }
   .day-cell.weekend-new .cell-tag { background: rgba(22, 163, 74, .12); color: #15803d; }
+  /* 节假日/调休班：琥珀标注（计费与周末同为全天空闲，仅身份区分）；需置于上面两条之后以同优先级覆盖 */
+  .day-cell .cell-tag.special { background: rgba(245, 158, 11, .16); color: #92400e; }
 
   /* Vertical bar inside each day cell (same segment order as row time block) */
   .cell-bar {
@@ -435,7 +438,7 @@
     <span class="legend-strip-title">图例：</span>
     <div class="legend-item"><div class="legend-swatch sw-peak"></div><span>高峰 09:00-12:00·14:00-18:00</span></div>
     <div class="legend-item"><div class="legend-swatch sw-idle"></div><span>空闲时段</span></div>
-    <div class="legend-item"><div class="legend-swatch sw-allidle"></div><span>周末全天低谷</span></div>
+    <div class="legend-item"><div class="legend-swatch sw-allidle"></div><span>周末·节假日全天低谷</span></div>
     <img id="peak-sticker" src="peak-sticker.png" alt="高峰时段表情包">
     <img id="idle-sticker" src="idle-sticker.png" alt="空闲时段表情包">
     <img id="weekend-sticker" src="weekend-sticker.png" alt="周末表情包">
@@ -461,7 +464,9 @@
   <div class="notice">
     <div class="notice-title">📌 官方定价要点（每百万 tokens）</div>
     <ul>
-      <li><span class="notice-dot">·</span><span><strong>高峰时段：</strong>北京时间周一至周五 9:00-12:00、14:00-18:00；其余（含周六、周日全天）为空闲时段</span></li>
+      <li><span class="notice-dot">·</span><span><strong>高峰时段：</strong>北京时间周一至周五（不含中国法定节假日）9:00-12:00、14:00-18:00</span></li>
+      <li><span class="notice-dot">·</span><span><strong>空闲时段：</strong>其余时段均为空闲，包括周末（含调休上班的周末）及中国法定节假日全天</span></li>
+      <li><span class="notice-dot">·</span><span><strong>节假日标注：</strong>按国务院办公厅 2026 年部分节假日安排（国办发明电〔2025〕7号）标注；后续年份安排公布后更新</span></li>
       <li><span class="notice-dot">·</span><span><strong>价格关系：</strong>空闲时段价格为高峰时段价格的一半（缓存命中/未命中均适用）</span></li>
       <li><span class="notice-dot">·</span><span><strong>Flash 系列（V4.1 Flash，<code>deepseek-flash</code>）：</strong>缓存命中 空闲 0.02 / 高峰 0.04 元；缓存未命中 空闲 1.0 / 高峰 2.0 元；输出 空闲 4.0 / 高峰 8.0 元</span></li>
       <li><span class="notice-dot">·</span><span><strong>V4 Pro（<code>deepseek-v4-pro</code>）：</strong>缓存命中 空闲 0.15 / 高峰 0.30 元；缓存未命中 空闲 4.5 / 高峰 9.0 元；输出 空闲 13.5 / 高峰 27.0 元</span></li>
@@ -472,7 +477,7 @@
   </div>
 
   <footer>
-    DeepSeek API 峰谷计费日历 · 按当前月份动态生成 · 数据源自官方定价文档 · 定价更新 2026-09-11
+    DeepSeek API 峰谷计费日历 · 按当前月份动态生成 · 数据源自官方定价文档 · 定价更新 2026-09-11 · 节假日安排 2026
   </footer>
 
 </div>
@@ -500,6 +505,36 @@
     { cls: 'peak',  flex: 4, text: '14:00-18:00' },
     { cls: 'idle',  flex: 6, text: '18:00-24:00' }
   ];
+
+  /* 法定节假日/调休数据：国务院办公厅《关于2026年部分节假日安排的通知》（国办发明电〔2025〕7号）。
+     官方定价脚注：高峰=周一至周五（不含中国法定节假日）9:00-12:00、14:00-18:00；
+     调休上班的周末、法定节假日全天均按空闲时段计费。
+     2027 年安排通常每年 11 月前后公布，届时在下方补充；未收录的年份按星期规则显示。 */
+  var HOLIDAY_RANGES_2026 = [
+    { start: '2026-01-01', end: '2026-01-03' },  /* 元旦 */
+    { start: '2026-02-15', end: '2026-02-23' },  /* 春节 */
+    { start: '2026-04-04', end: '2026-04-06' },  /* 清明节 */
+    { start: '2026-05-01', end: '2026-05-05' },  /* 劳动节 */
+    { start: '2026-06-19', end: '2026-06-21' },  /* 端午节 */
+    { start: '2026-09-25', end: '2026-09-27' },  /* 中秋节 */
+    { start: '2026-10-01', end: '2026-10-07' }   /* 国庆节 */
+  ].map(function (r) {
+    return { start: Date.parse(r.start + 'T00:00:00Z'), end: Date.parse(r.end + 'T00:00:00Z') };
+  });
+  var MAKEUP_WORKDAYS_2026 = [  /* 调休上班的周末（计费仍全天空闲，仅标注区分） */
+    '2026-01-04', '2026-02-14', '2026-02-28',
+    '2026-05-09', '2026-09-20', '2026-10-10'
+  ];
+
+  /* 日期类别：'holiday'=法定节假日（全天空闲）、'makeup'=调休上班的周末（仍全天空闲）、null=普通 */
+  function dayCategory(year, month, day) {
+    var dayMs = Date.UTC(year, month - 1, day);
+    for (var i = 0; i < HOLIDAY_RANGES_2026.length; i++) {
+      if (dayMs >= HOLIDAY_RANGES_2026[i].start && dayMs <= HOLIDAY_RANGES_2026[i].end) return 'holiday';
+    }
+    var key = year + '-' + pad2(month) + '-' + pad2(day);
+    return MAKEUP_WORKDAYS_2026.indexOf(key) >= 0 ? 'makeup' : null;
+  }
 
   function nowBJ() { return new Date(Date.now() + offsetMs); }
   function pad2(n) { return String(n).padStart(2, '0'); }
@@ -571,14 +606,19 @@
       + '</div>';
   }
 
-  /* 5) 单个日单元格（工作日=5 段峰谷；周末=全天深绿） */
+  /* 5) 单个日单元格（工作日=5 段峰谷；周末/法定节假日/调休上班的周末=全天空闲） */
   function dayCellHtml(year, month, day, daysInMonth) {
     if (day < 1 || day > daysInMonth) return '<div class="day-cell empty"></div>';
     var dowMon = (new Date(Date.UTC(year, month - 1, day)).getUTCDay() + 6) % 7; /* 周一=0 … 周日=6 */
     var weekend = dowMon >= 5; /* 周六=5 周日=6 */
-    var cls = weekend ? 'day-cell weekend-new' : 'day-cell workday';
+    var cat = dayCategory(year, month, day);
+    var allIdle = weekend || cat === 'holiday'; /* 节假日工作日与周末同按全天空闲计费 */
+    var cls = allIdle ? 'day-cell weekend-new' : 'day-cell workday';
+    var tag = allIdle ? (cat === 'holiday' ? '节假日' : (cat === 'makeup' ? '调休班' : '周末'))
+                      : '工作日';
+    var tagCls = 'cell-tag' + (tag === '节假日' || tag === '调休班' ? ' special' : '');
     var bar;
-    if (weekend) {
+    if (allIdle) {
       bar = '<div class="cell-bar">' + segHtml('vseg allidle', 24, '') + '</div>';
     } else {
       var segs = '';
@@ -588,9 +628,9 @@
       bar = '<div class="cell-bar">' + segs + '</div>';
     }
     return '<div class="' + cls + '">'
-      + '<div class="cell-top"><span class="cell-num">' + day + '</span><span class="cell-tag">' + (weekend ? '周末' : '工作日') + '</span></div>'
+      + '<div class="cell-top"><span class="cell-num">' + day + '</span><span class="' + tagCls + '">' + tag + '</span></div>'
       + bar
-      + '<div class="cell-summary">' + WEEK_NAMES[dowMon] + ' · ' + (weekend ? '全天低谷' : '峰谷') + '</div>'
+      + '<div class="cell-summary">' + WEEK_NAMES[dowMon] + ' · ' + (allIdle ? '全天低谷' : '峰谷') + '</div>'
       + '</div>';
   }
 
@@ -634,10 +674,12 @@
     return false;
   }
 
-  /* 8) 峰值状态判断（周末全天低谷 = 新规） */
+  /* 8) 峰值状态判断（官方脚注：周末——含调休上班的周末——及法定节假日全天空闲） */
   function peakStatus(f) {
+    var cat = dayCategory(f.year, f.month, f.day);
+    if (cat === 'holiday') return { key: 'holiday', text: '节假日 · 全天低谷' };
     var dow = new Date(Date.UTC(f.year, f.month - 1, f.day)).getUTCDay(); /* 0=周日 */
-    if (dow === 0 || dow === 6) return { key: 'weekend', text: '周末 · 全天低谷' };
+    if (dow === 0 || dow === 6) return { key: 'weekend', text: cat === 'makeup' ? '周末（调休班）· 全天低谷' : '周末 · 全天低谷' };
     var h = f.hour;
     if ((h >= 9 && h < 12) || (h >= 14 && h < 18)) return { key: 'peak', text: '高峰时段' };
     return { key: 'idle', text: '空闲时段' };
@@ -691,9 +733,9 @@
     var st = peakStatus(f);
     nowStatus.textContent = '⏱ 状态：' + st.text;
     nowStatus.className = 'now-item now-status ' + st.key;
-    /* 三个状态互斥显示对应表情包；状态切换时重排一次表情几何（见 layoutStickers） */
+    /* 三个状态互斥显示对应表情包；节假日复用空闲表情；状态切换时重排一次表情几何（见 layoutStickers） */
     strip.classList.toggle('peak-on', st.key === 'peak');
-    strip.classList.toggle('idle-on', st.key === 'idle');
+    strip.classList.toggle('idle-on', st.key === 'idle' || st.key === 'holiday');
     strip.classList.toggle('weekend-on', st.key === 'weekend');
     if (st.key !== lastStatusKey) {
       lastStatusKey = st.key;
