@@ -511,32 +511,38 @@
      调休上班的周末、法定节假日全天均按空闲时段计费。
      2027 年安排通常每年 11 月前后公布，届时在下方补充；未收录的年份按星期规则显示。 */
   var HOLIDAY_RANGES_2026 = [
-    { name: '元旦',   start: '2026-01-01', end: '2026-01-03' },
-    { name: '春节',   start: '2026-02-15', end: '2026-02-23' },
-    { name: '清明',   start: '2026-04-04', end: '2026-04-06' },
-    { name: '劳动节', start: '2026-05-01', end: '2026-05-05' },
-    { name: '端午',   start: '2026-06-19', end: '2026-06-21' },
-    { name: '中秋',   start: '2026-09-25', end: '2026-09-27' },
-    { name: '国庆',   start: '2026-10-01', end: '2026-10-07' }
+    { name: '元旦',   start: '2026-01-01', end: '2026-01-03', day: '2026-01-01' },
+    { name: '春节',   start: '2026-02-15', end: '2026-02-23', day: '2026-02-17' },  /* 正日=正月初一 */
+    { name: '清明',   start: '2026-04-04', end: '2026-04-06', day: '2026-04-05' },  /* 节气日 04-05 02:39 */
+    { name: '劳动节', start: '2026-05-01', end: '2026-05-05', day: '2026-05-01' },
+    { name: '端午',   start: '2026-06-19', end: '2026-06-21', day: '2026-06-19' },
+    { name: '中秋',   start: '2026-09-25', end: '2026-09-27', day: '2026-09-25' },
+    { name: '国庆',   start: '2026-10-01', end: '2026-10-07', day: '2026-10-01' }
   ].map(function (r) {
-    return { name: r.name, start: Date.parse(r.start + 'T00:00:00Z'), end: Date.parse(r.end + 'T00:00:00Z') };
+    return {
+      name: r.name,
+      start: Date.parse(r.start + 'T00:00:00Z'),
+      end: Date.parse(r.end + 'T00:00:00Z'),
+      day: Date.parse(r.day + 'T00:00:00Z')
+    };
   });
   var MAKEUP_WORKDAYS_2026 = [  /* 调休上班的周末（计费仍全天空闲，仅标注区分） */
     '2026-01-04', '2026-02-14', '2026-02-28',
     '2026-05-09', '2026-09-20', '2026-10-10'
   ];
 
-  /* 日期类别：{type:'holiday',name:节日名}=法定节假日（全天空闲）、
+  /* 日期类别：{type:'holiday',name:节日名,isDay}=法定节假日（全天空闲，isDay=节日正日）、
      {type:'makeup',name:'调休班'}=调休上班的周末（仍全天空闲）、{type:null}=普通 */
   function dayCategory(year, month, day) {
     var dayMs = Date.UTC(year, month - 1, day);
     for (var i = 0; i < HOLIDAY_RANGES_2026.length; i++) {
-      if (dayMs >= HOLIDAY_RANGES_2026[i].start && dayMs <= HOLIDAY_RANGES_2026[i].end) {
-        return { type: 'holiday', name: HOLIDAY_RANGES_2026[i].name };
+      var r = HOLIDAY_RANGES_2026[i];
+      if (dayMs >= r.start && dayMs <= r.end) {
+        return { type: 'holiday', name: r.name, isDay: dayMs === r.day };
       }
     }
     var key = year + '-' + pad2(month) + '-' + pad2(day);
-    return MAKEUP_WORKDAYS_2026.indexOf(key) >= 0 ? { type: 'makeup', name: '调休班' } : { type: null, name: null };
+    return MAKEUP_WORKDAYS_2026.indexOf(key) >= 0 ? { type: 'makeup', name: '调休班', isDay: false } : { type: null, name: null, isDay: false };
   }
 
   function nowBJ() { return new Date(Date.now() + offsetMs); }
@@ -619,7 +625,7 @@
     var allIdle = weekend || isHoliday; /* 节假日工作日与周末同按全天空闲计费 */
     var cls = allIdle ? 'day-cell weekend-new' : 'day-cell workday';
     var tag, special = false;
-    if (isHoliday)            { tag = cat.name; special = true; }        /* 节日名称 */
+    if (isHoliday)            { tag = cat.isDay ? cat.name : '节假日'; special = true; }  /* 节日名仅标正日 */
     else if (cat.type === 'makeup') { tag = cat.name; special = true; }  /* 调休班 */
     else if (weekend)         { tag = '周末'; }
     else                      { tag = '工作日'; }
@@ -684,7 +690,7 @@
   /* 8) 峰值状态判断（官方脚注：周末——含调休上班的周末——及法定节假日全天空闲） */
   function peakStatus(f) {
     var cat = dayCategory(f.year, f.month, f.day);
-    if (cat.type === 'holiday') return { key: 'holiday', text: cat.name + ' · 全天低谷' };
+    if (cat.type === 'holiday') return { key: 'holiday', text: (cat.isDay ? cat.name : '节假日') + ' · 全天低谷' };
     var dow = new Date(Date.UTC(f.year, f.month - 1, f.day)).getUTCDay(); /* 0=周日 */
     if (dow === 0 || dow === 6) return { key: 'weekend', text: cat.type === 'makeup' ? '周末（调休班）· 全天低谷' : '周末 · 全天低谷' };
     var h = f.hour;
