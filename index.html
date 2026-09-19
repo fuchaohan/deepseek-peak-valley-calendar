@@ -115,6 +115,9 @@
   .now-item.now-status.allidle { background: rgba(22, 163, 74, .1); color: #15803d; border-color: rgba(22, 163, 74, .24); }
   .now-item.now-status.weekend { background: rgba(22, 163, 74, .1); color: #15803d; border-color: rgba(22, 163, 74, .24); }
   .now-item.now-status.holiday { background: rgba(22, 163, 74, .1); color: #15803d; border-color: rgba(22, 163, 74, .24); }
+  /* DM Sans 无等宽数字特性（tnum 实测无效），HH:MM:SS 各位宽度不同会让胶囊每秒抖动；
+     固定最小宽度并居中（12em 覆盖实测最宽 08:08:00 ≈11.6em，含手机 12px 字号档） */
+  .now-item.now-time { min-width: 12em; text-align: center; }
   /* All three status stickers share the same reserved right-hand blank zone (container-relative),
      centered vertically on the gap centerline between now-strip and legend-strip.
      Height and vertical offset are set dynamically by JS. */
