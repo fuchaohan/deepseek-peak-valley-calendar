@@ -511,29 +511,32 @@
      调休上班的周末、法定节假日全天均按空闲时段计费。
      2027 年安排通常每年 11 月前后公布，届时在下方补充；未收录的年份按星期规则显示。 */
   var HOLIDAY_RANGES_2026 = [
-    { start: '2026-01-01', end: '2026-01-03' },  /* 元旦 */
-    { start: '2026-02-15', end: '2026-02-23' },  /* 春节 */
-    { start: '2026-04-04', end: '2026-04-06' },  /* 清明节 */
-    { start: '2026-05-01', end: '2026-05-05' },  /* 劳动节 */
-    { start: '2026-06-19', end: '2026-06-21' },  /* 端午节 */
-    { start: '2026-09-25', end: '2026-09-27' },  /* 中秋节 */
-    { start: '2026-10-01', end: '2026-10-07' }   /* 国庆节 */
+    { name: '元旦',   start: '2026-01-01', end: '2026-01-03' },
+    { name: '春节',   start: '2026-02-15', end: '2026-02-23' },
+    { name: '清明',   start: '2026-04-04', end: '2026-04-06' },
+    { name: '劳动节', start: '2026-05-01', end: '2026-05-05' },
+    { name: '端午',   start: '2026-06-19', end: '2026-06-21' },
+    { name: '中秋',   start: '2026-09-25', end: '2026-09-27' },
+    { name: '国庆',   start: '2026-10-01', end: '2026-10-07' }
   ].map(function (r) {
-    return { start: Date.parse(r.start + 'T00:00:00Z'), end: Date.parse(r.end + 'T00:00:00Z') };
+    return { name: r.name, start: Date.parse(r.start + 'T00:00:00Z'), end: Date.parse(r.end + 'T00:00:00Z') };
   });
   var MAKEUP_WORKDAYS_2026 = [  /* 调休上班的周末（计费仍全天空闲，仅标注区分） */
     '2026-01-04', '2026-02-14', '2026-02-28',
     '2026-05-09', '2026-09-20', '2026-10-10'
   ];
 
-  /* 日期类别：'holiday'=法定节假日（全天空闲）、'makeup'=调休上班的周末（仍全天空闲）、null=普通 */
+  /* 日期类别：{type:'holiday',name:节日名}=法定节假日（全天空闲）、
+     {type:'makeup',name:'调休班'}=调休上班的周末（仍全天空闲）、{type:null}=普通 */
   function dayCategory(year, month, day) {
     var dayMs = Date.UTC(year, month - 1, day);
     for (var i = 0; i < HOLIDAY_RANGES_2026.length; i++) {
-      if (dayMs >= HOLIDAY_RANGES_2026[i].start && dayMs <= HOLIDAY_RANGES_2026[i].end) return 'holiday';
+      if (dayMs >= HOLIDAY_RANGES_2026[i].start && dayMs <= HOLIDAY_RANGES_2026[i].end) {
+        return { type: 'holiday', name: HOLIDAY_RANGES_2026[i].name };
+      }
     }
     var key = year + '-' + pad2(month) + '-' + pad2(day);
-    return MAKEUP_WORKDAYS_2026.indexOf(key) >= 0 ? 'makeup' : null;
+    return MAKEUP_WORKDAYS_2026.indexOf(key) >= 0 ? { type: 'makeup', name: '调休班' } : { type: null, name: null };
   }
 
   function nowBJ() { return new Date(Date.now() + offsetMs); }
@@ -612,11 +615,15 @@
     var dowMon = (new Date(Date.UTC(year, month - 1, day)).getUTCDay() + 6) % 7; /* 周一=0 … 周日=6 */
     var weekend = dowMon >= 5; /* 周六=5 周日=6 */
     var cat = dayCategory(year, month, day);
-    var allIdle = weekend || cat === 'holiday'; /* 节假日工作日与周末同按全天空闲计费 */
+    var isHoliday = cat.type === 'holiday';
+    var allIdle = weekend || isHoliday; /* 节假日工作日与周末同按全天空闲计费 */
     var cls = allIdle ? 'day-cell weekend-new' : 'day-cell workday';
-    var tag = allIdle ? (cat === 'holiday' ? '节假日' : (cat === 'makeup' ? '调休班' : '周末'))
-                      : '工作日';
-    var tagCls = 'cell-tag' + (tag === '节假日' || tag === '调休班' ? ' special' : '');
+    var tag, special = false;
+    if (isHoliday)            { tag = cat.name; special = true; }        /* 节日名称 */
+    else if (cat.type === 'makeup') { tag = cat.name; special = true; }  /* 调休班 */
+    else if (weekend)         { tag = '周末'; }
+    else                      { tag = '工作日'; }
+    var tagCls = 'cell-tag' + (special ? ' special' : '');
     var bar;
     if (allIdle) {
       bar = '<div class="cell-bar">' + segHtml('vseg allidle', 24, '') + '</div>';
@@ -677,9 +684,9 @@
   /* 8) 峰值状态判断（官方脚注：周末——含调休上班的周末——及法定节假日全天空闲） */
   function peakStatus(f) {
     var cat = dayCategory(f.year, f.month, f.day);
-    if (cat === 'holiday') return { key: 'holiday', text: '节假日 · 全天低谷' };
+    if (cat.type === 'holiday') return { key: 'holiday', text: cat.name + ' · 全天低谷' };
     var dow = new Date(Date.UTC(f.year, f.month - 1, f.day)).getUTCDay(); /* 0=周日 */
-    if (dow === 0 || dow === 6) return { key: 'weekend', text: cat === 'makeup' ? '周末（调休班）· 全天低谷' : '周末 · 全天低谷' };
+    if (dow === 0 || dow === 6) return { key: 'weekend', text: cat.type === 'makeup' ? '周末（调休班）· 全天低谷' : '周末 · 全天低谷' };
     var h = f.hour;
     if ((h >= 9 && h < 12) || (h >= 14 && h < 18)) return { key: 'peak', text: '高峰时段' };
     return { key: 'idle', text: '空闲时段' };
