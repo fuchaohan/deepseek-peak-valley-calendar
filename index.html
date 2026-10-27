@@ -962,22 +962,59 @@
 })();
 </script>
 <script>
-/* 最新公告折叠：点击按钮切换；向下滚动超过阈值自动收起，自动收起的内容回到顶部后自动展开。
-   规则：① 用户手动展开后，本次下滑期间不再自动折叠；② 用户手动折叠的，不会被滚动展开
-   （只有「自动折叠」的才在回顶时还原），避免与用户意图相悖。 */
+/* 最新公告折叠：点击切换 + 首屏 3 秒倒计时折叠 + 滚动自动折叠 + 折叠状态记忆。
+   记忆规则：公告内容未变（版本指纹一致）→ 恢复上次折叠状态；内容有更新或首次访问 →
+   展开并重新倒计时 3 秒后折叠。状态存 localStorage，隐私模式下静默降级。
+   意图优先：① 下滑中手动展开后本次下滑不再自动折叠；② 手动折叠的不被滚动展开；
+   ③ 倒计时折叠视为「默认收起」而非滚动折叠，回顶不会自动还原。 */
 (function () {
   var box = document.getElementById('notice-alert');
   var btn = document.getElementById('notice-toggle');
-  if (!box || !btn) return;
+  var body = document.getElementById('notice-alert-body');
+  if (!box || !btn || !body) return;
 
   var COLLAPSE_AT = 200; /* 下滑超过该距离自动折叠 */
-  var RESTORE_AT = 60;   /* 回到该位置内，自动折叠的会展开 */
+  var RESTORE_AT = 60;   /* 回到该位置内，滚动折叠的会展开 */
+  var COUNTDOWN_S = 3;   /* 新内容展开后倒计时折叠秒数 */
+  var STORE_KEY = 'ds-notice-collapse-v1';
+
   var collapsed = false;
   var autoCollapsed = false; /* 当前折叠是否由滚动触发 */
   var manualOpen = false;    /* 下滑状态下手动展开 */
+  var countdownId = null;
+
+  /* 内容版本指纹（djb2）：只取内容区文本，按键文案不参与 */
+  function fingerprint() {
+    var text = body.textContent || '';
+    var hash = 5381;
+    for (var i = 0; i < text.length; i++) hash = ((hash << 5) + hash + text.charCodeAt(i)) | 0;
+    return (hash >>> 0).toString(36);
+  }
+  var VERSION = fingerprint();
+
+  function readSaved() {
+    try {
+      var raw = window.localStorage.getItem(STORE_KEY);
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      return (o && typeof o.collapsed === 'boolean' && typeof o.v === 'string') ? o : null;
+    } catch (e) { return null; } /* 隐私模式 / 禁用存储 */
+  }
+  function persist() {
+    try {
+      window.localStorage.setItem(STORE_KEY, JSON.stringify({ v: VERSION, collapsed: collapsed }));
+    } catch (e) { /* 忽略写入失败，不影响折叠本身 */ }
+  }
 
   function currentY() {
     return window.pageYOffset || document.documentElement.scrollTop || 0;
+  }
+
+  function stopCountdown() {
+    if (countdownId !== null) {
+      clearInterval(countdownId);
+      countdownId = null;
+    }
   }
 
   function sync() {
@@ -990,10 +1027,28 @@
     if (v === collapsed) { if (v) autoCollapsed = !!auto; return; }
     collapsed = v;
     autoCollapsed = v ? !!auto : false;
+    if (!v) stopCountdown();
     sync();
+    persist();
+  }
+
+  function startCountdown() {
+    stopCountdown();
+    var left = COUNTDOWN_S;
+    btn.textContent = '收起（' + left + 's）';
+    countdownId = setInterval(function () {
+      left -= 1;
+      if (left <= 0) {
+        stopCountdown();
+        setCollapsed(true, false); /* 默认收起：回顶不自动还原 */
+        return;
+      }
+      btn.textContent = '收起（' + left + 's）';
+    }, 1000);
   }
 
   btn.addEventListener('click', function () {
+    stopCountdown();
     if (collapsed) {
       /* 只有在下滑状态手动展开才抑制自动折叠（顶部展开无需抑制） */
       manualOpen = currentY() > COLLAPSE_AT;
@@ -1014,15 +1069,26 @@
       var y = currentY();
       if (y <= RESTORE_AT) {
         manualOpen = false;
-        if (autoCollapsed) setCollapsed(false, false); /* 仅还原自动折叠的 */
+        if (autoCollapsed) setCollapsed(false, false); /* 仅还原滚动触发的折叠 */
       } else if (y > COLLAPSE_AT && !manualOpen && !collapsed) {
+        stopCountdown();
         setCollapsed(true, true);
       }
     }, 80);
   }
   window.addEventListener('scroll', onScroll, { passive: true });
-  sync();     /* 初始化：让 DOM 属性与内部状态一致 */
-  onScroll(); /* 刷新后若已处于滚动位置（如带锚点）也套用一次 */
+
+  /* 初始化：内容未变 → 恢复上次状态（不倒计时）；首次访问或内容更新 → 展开并倒计时 */
+  var saved = readSaved();
+  if (saved && saved.v === VERSION) {
+    collapsed = saved.collapsed;
+    sync();
+  } else {
+    collapsed = false;
+    sync();
+    startCountdown();
+  }
+  onScroll(); /* 带锚点刷新等已在滚动位置的情况 */
 })();
 </script>
 </body>
