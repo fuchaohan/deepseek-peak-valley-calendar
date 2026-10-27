@@ -380,6 +380,28 @@
     font-size: 12px; background: rgba(0, 0, 0, .05); color: var(--ds-brand-deep);
     border-radius: 6px; padding: 1px 5px;
   }
+  /* 公告内的极简价格表（Search/Fetch） */
+  .notice-table {
+    margin: 8px 0 2px;
+    border: 1px solid rgba(245, 158, 11, .22);
+    border-radius: var(--ds-radius-sm);
+    background: rgba(255, 255, 255, .6);
+    font-size: 12px;
+    overflow: hidden;
+  }
+  .notice-table > div {
+    display: grid;
+    grid-template-columns: 88px 1fr auto;
+    gap: 8px;
+    padding: 6px 10px;
+    align-items: center;
+  }
+  .notice-table .nt-head {
+    background: rgba(245, 158, 11, .1);
+    font-size: 11px; font-weight: 700; color: #92400e;
+  }
+  .notice-table .nt-row + .nt-row { border-top: 1px solid rgba(245, 158, 11, .16); }
+  .notice-table .nt-row span:last-child { text-align: right; font-weight: 700; color: var(--ds-text-bluish); }
 
   footer { text-align: center; color: var(--ds-text-placeholder); font-size: 12px; margin-top: 24px; }
 
@@ -416,6 +438,9 @@
     .notice li { font-size: 12px; padding: 7px 0; }
     .notice-date { font-size: 10px; padding: 1px 5px; }
     .notice code { font-size: 11px; padding: 1px 4px; }
+    .notice-table { font-size: 11px; }
+    .notice-table > div { grid-template-columns: 62px 1fr auto; gap: 6px; padding: 5px 8px; }
+    .notice-table .nt-head { font-size: 10px; }
     footer { font-size: 10px; margin-top: 16px; }
     /* 手机端表情右边距收窄（两区块预留宽度由 JS 动态设置，见 layoutStickers()） */
     #peak-sticker, #idle-sticker, #weekend-sticker { right: 12px; }
@@ -453,6 +478,14 @@
       <li><span class="notice-dot">·</span><span><strong>Flash 系列调价：</strong><span class="notice-date">2026-09-10 12:00</span>起，V4.1 Flash（模型名 <code>deepseek-flash</code>）执行新价——空闲时段输入缓存命中 0.02 元、输入缓存未命中 1 元、输出 4 元，高峰时段为空闲的 2 倍（每百万 tokens）</span></li>
       <li><span class="notice-dot">·</span><span><strong>V4 Pro 继续服务：</strong>官方 <span class="notice-date">2026-09-11</span> 通知，为响应用户需求，决定在 <strong>2026 年 9 月 14 日之后继续提供</strong> <code>deepseek-v4-pro</code> 的 API 调用服务，计费方式保持不变；原定 9/14 12:00 下线路由至 V4.1 Flash 的安排已取消（如有变动官方将另行通知）</span></li>
       <li><span class="notice-dot">·</span><span><strong>模型名与旧模型：</strong>V4.1 Flash 模型名统一为 <code>deepseek-flash</code>；旧版 V4 Flash / V4 Flash Vision Exp 已下线，其模型名暂路由至 V4.1 Flash（官方称 V4.1 Flash 在性能、费用、速度、总用时等指标上已超越 V4 Pro）</span></li>
+      <li><span class="notice-dot">·</span><span><strong>网页搜索与抓取计费：</strong>Search 与 Fetch 为独立的 API，按请求次数计费，两者分别计算；仅成功请求（返回 HTTP 200 且数据有效）计费，无结果、失败或超时不收费
+        <div class="notice-table">
+          <div class="nt-head"><span>API</span><span>计费单位</span><span>价格</span></div>
+          <div class="nt-row"><span><code>Search</code></span><span>每 1,000 次成功请求</span><span>5 元</span></div>
+          <div class="nt-row"><span><code>Fetch</code></span><span>每 1,000 次成功请求</span><span>5 元</span></div>
+        </div>
+      </span></li>
+      <li><span class="notice-dot">·</span><span><strong>Search / Fetch 生效时间：</strong><span class="notice-date">2026-11-01 00:00</span>起，在 DeepSeek Harness / Claude Code / Codex 中使用 DeepSeek API 时，经 Server 端工具调用访问 Search / Fetch 的请求将按次收取费用（此前这部分调用未计费）</span></li>
     </ul>
   </div>
 
@@ -480,7 +513,7 @@
   </div>
 
   <footer>
-    DeepSeek API 峰谷计费日历 · 按当前月份动态生成 · 数据源自官方定价文档 · 定价更新 2026-09-11 · 节假日安排 2026
+    DeepSeek API 峰谷计费日历 · 按当前月份动态生成 · 数据源自官方定价文档 · 定价更新 2026-09-11 · 节假日安排 2026 · Search/Fetch 计费 2026-11-01
   </footer>
 
 </div>
