@@ -370,6 +370,39 @@
   .notice-alert .notice-title { color: var(--ds-amber-600); }
   .notice-alert .notice-dot { color: var(--ds-amber-500); }
   .notice-alert li { border-bottom-color: rgba(245, 158, 11, .18); }
+  /* 折叠：标题行右侧按钮 + 内容区（grid-template-rows 0fr/1fr 过渡，无需 JS 量高度） */
+  .notice-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-bottom: 10px;
+  }
+  .notice-head .notice-title { margin-bottom: 0; }
+  .notice-toggle {
+    flex-shrink: 0;
+    font-family: inherit; font-size: 12px; font-weight: 600;
+    color: #92400e; background: rgba(245, 158, 11, .12);
+    border: 1px solid rgba(245, 158, 11, .28); border-radius: var(--ds-radius-pill);
+    padding: 3px 12px; cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .notice-toggle:hover { background: rgba(245, 158, 11, .2); border-color: rgba(245, 158, 11, .45); }
+  .notice-toggle:focus-visible { outline: 2px solid var(--ds-amber-500); outline-offset: 2px; }
+  .notice-toggle::after {
+    content: ""; display: inline-block; width: 6px; height: 6px;
+    border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+    transform: translateY(-2px) rotate(45deg); margin-left: 6px;
+    transition: transform 0.2s ease;
+  }
+  .notice-alert.collapsed .notice-toggle::after { transform: translateY(-1px) rotate(-135deg); }
+  .notice-alert-body {
+    display: grid; grid-template-rows: 1fr;
+    transition: grid-template-rows 0.26s ease;
+  }
+  .notice-alert-body > ul { overflow: hidden; min-height: 0; }
+  .notice-alert.collapsed .notice-alert-body { grid-template-rows: 0fr; }
+  .notice-alert.collapsed .notice-head { margin-bottom: 0; }
+  @media (prefers-reduced-motion: reduce) {
+    .notice-alert-body, .notice-toggle::after { transition: none; }
+  }
   .notice-date {
     display: inline-block; font-size: 11px; font-weight: 700;
     color: #92400e; background: rgba(245, 158, 11, .16); border-radius: 4px;
@@ -435,6 +468,7 @@
     .cell-summary { font-size: 8px; padding: 2px 2px; }
     .notice { padding: 16px; border-radius: var(--ds-radius-panel); }
     .notice-title { font-size: 13px; }
+    .notice-toggle { font-size: 11px; padding: 2px 10px; }
     .notice li { font-size: 12px; padding: 7px 0; }
     .notice-date { font-size: 10px; padding: 1px 5px; }
     .notice code { font-size: 11px; padding: 1px 4px; }
@@ -472,8 +506,13 @@
     <img id="weekend-sticker" src="weekend-sticker.png" alt="周末表情包">
   </div>
 
-  <div class="notice notice-alert">
-    <div class="notice-title">📣 最新公告</div>
+  <div class="notice notice-alert" id="notice-alert">
+    <div class="notice-head">
+      <div class="notice-title">📣 最新公告</div>
+      <button type="button" class="notice-toggle" id="notice-toggle"
+              aria-expanded="true" aria-controls="notice-alert-body">收起</button>
+    </div>
+    <div class="notice-alert-body" id="notice-alert-body">
     <ul>
       <li><span class="notice-dot">·</span><span><strong>Flash 系列调价：</strong><span class="notice-date">2026-09-10 12:00</span>起，V4.1 Flash（模型名 <code>deepseek-flash</code>）执行新价——空闲时段输入缓存命中 0.02 元、输入缓存未命中 1 元、输出 4 元，高峰时段为空闲的 2 倍（每百万 tokens）</span></li>
       <li><span class="notice-dot">·</span><span><strong>V4 Pro 继续服务：</strong>官方 <span class="notice-date">2026-09-11</span> 通知，为响应用户需求，决定在 <strong>2026 年 9 月 14 日之后继续提供</strong> <code>deepseek-v4-pro</code> 的 API 调用服务，计费方式保持不变；原定 9/14 12:00 下线路由至 V4.1 Flash 的安排已取消（如有变动官方将另行通知）</span></li>
@@ -487,6 +526,7 @@
       </span></li>
       <li><span class="notice-dot">·</span><span><strong>Search / Fetch 生效时间：</strong><span class="notice-date">2026-11-01 00:00</span>起，在 DeepSeek Harness / Claude Code / Codex 中使用 DeepSeek API 时，经 Server 端工具调用访问 Search / Fetch 的请求将按次收取费用（此前这部分调用未计费）</span></li>
     </ul>
+    </div>
   </div>
 
   <div class="calendar-wrap">
@@ -919,6 +959,70 @@
   resize();
   window.addEventListener('resize', resize);
   window.addEventListener('load', resize);
+})();
+</script>
+<script>
+/* 最新公告折叠：点击按钮切换；向下滚动超过阈值自动收起，自动收起的内容回到顶部后自动展开。
+   规则：① 用户手动展开后，本次下滑期间不再自动折叠；② 用户手动折叠的，不会被滚动展开
+   （只有「自动折叠」的才在回顶时还原），避免与用户意图相悖。 */
+(function () {
+  var box = document.getElementById('notice-alert');
+  var btn = document.getElementById('notice-toggle');
+  if (!box || !btn) return;
+
+  var COLLAPSE_AT = 200; /* 下滑超过该距离自动折叠 */
+  var RESTORE_AT = 60;   /* 回到该位置内，自动折叠的会展开 */
+  var collapsed = false;
+  var autoCollapsed = false; /* 当前折叠是否由滚动触发 */
+  var manualOpen = false;    /* 下滑状态下手动展开 */
+
+  function currentY() {
+    return window.pageYOffset || document.documentElement.scrollTop || 0;
+  }
+
+  function sync() {
+    box.classList.toggle('collapsed', collapsed);
+    btn.setAttribute('aria-expanded', String(!collapsed));
+    btn.textContent = collapsed ? '展开' : '收起';
+  }
+
+  function setCollapsed(v, auto) {
+    if (v === collapsed) { if (v) autoCollapsed = !!auto; return; }
+    collapsed = v;
+    autoCollapsed = v ? !!auto : false;
+    sync();
+  }
+
+  btn.addEventListener('click', function () {
+    if (collapsed) {
+      /* 只有在下滑状态手动展开才抑制自动折叠（顶部展开无需抑制） */
+      manualOpen = currentY() > COLLAPSE_AT;
+      setCollapsed(false, false);
+    } else {
+      manualOpen = false;
+      setCollapsed(true, false);  /* 手动折叠：不随滚动展开 */
+    }
+  });
+
+  var ticking = false;
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    /* setTimeout 节流（不用 rAF：部分环境/后台标签页 rAF 不触发，会让折叠逻辑失效） */
+    setTimeout(function () {
+      ticking = false;
+      var y = currentY();
+      if (y <= RESTORE_AT) {
+        manualOpen = false;
+        if (autoCollapsed) setCollapsed(false, false); /* 仅还原自动折叠的 */
+      } else if (y > COLLAPSE_AT && !manualOpen && !collapsed) {
+        setCollapsed(true, true);
+      }
+    }, 80);
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  sync();     /* 初始化：让 DOM 属性与内部状态一致 */
+  onScroll(); /* 刷新后若已处于滚动位置（如带锚点）也套用一次 */
 })();
 </script>
 </body>
